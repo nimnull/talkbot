@@ -1,11 +1,10 @@
+import inject
 import motor
 
+from talkbot.entities import Config
 
-MONGO_URI = "mongodb://localhost:27017"
 
-
-def init_database(uri):
-    client = motor.motor_asyncio.AsyncIOMotorClient(uri)
-    return client['test_database']
-
-db = init_database(MONGO_URI)
+@inject.param('config', Config)
+def init_database(config=None):
+    client = motor.motor_asyncio.AsyncIOMotorClient(config.mongo.uri)
+    return client[config.mongo.db]

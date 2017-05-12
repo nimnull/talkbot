@@ -6,20 +6,28 @@ from urllib.parse import urljoin
 import aiohttp
 import datetime
 
+import inject
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from talkbot.entities import Config
 from talkbot.logger import log
 from talkbot.reactions import process_chat_left, process_chat_joined, process_entities
+from talkbot.storage import init_database
 
 BOT_TOKEN = "<your token here>"
 
 
 class TelegramBot:
     BASE_URI = "https://api.telegram.org/bot{0.token}/"
+    known_commands = {
+
+    }
 
     def __init__(self, session, token):
         self.session = session
-        self.token = token
         self.update_offset = 0
         self.username = "ZamzaBot"
+        self.token = token
 
     def _get_uri(self, endpoint):
         return urljoin(self.BASE_URI.format(self), endpoint)
@@ -42,9 +50,10 @@ class TelegramBot:
             log.error(msg)
 
     async def reply(self, chat, sender=None):
+        name = sender['first_name']
         payload = {
             'chat_id': chat['id'],
-            'text': '@{} confirmed at {}'.format(sender['username'], datetime.datetime.now().isoformat('T'))
+            'text': 'confirmed at {} from {}'.format(datetime.datetime.now().isoformat('T'), name)
         }
         return await self.send_message(payload)
 
@@ -86,7 +95,14 @@ class TelegramBot:
         message_text = message.get('text')
         left_chat_member = message.get('left_chat_member')
         new_chat_member = message.get('new_chat_member')
+
         entities = message.get('entities', [])
+        command_ents = filter(lambda e: e['type'] == 'bot_command', entities)
+        for marker in command_ents:
+            cmd = message_text[marker['offset']:marker['length']].strip('/')
+            await self.on_command(cmd)
+
+
         log.info("Message: %s", message_text)
 
         if message_text:
@@ -98,21 +114,35 @@ class TelegramBot:
 
         [process_entities(self, entry, message) for entry in entities]
 
+    async def on_command(self, cmd):
+        pass
+
 
 async def main(loop, connector):
     session = aiohttp.ClientSession(connector=connector, loop=loop, conn_timeout=5)
-    bot = TelegramBot(session, BOT_TOKEN)
+    token = inject.instance(Config).token
+    bot = TelegramBot(session, token)
 
     while True:
         await bot.get_updates()
         await asyncio.sleep(3)
 
-if __name__ =='__main__':
+
+def init(config):
+
+    def config_injections(binder):
+        binder.bind(Config, Config.load_config(config))
+        binder.bind_to_provider(AsyncIOMotorDatabase, init_database)
+
+    inject.configure(config_injections)
+
     loop = asyncio.get_event_loop()
+    conn = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=loop)
     try:
-        conn = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=loop)
         loop.run_until_complete(main(loop, conn))
     except KeyboardInterrupt:
         log.info('Interrupted by user')
     finally:
+        conn.close()
         loop.close()
+
