@@ -11,7 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from talkbot.entities import Config
 from talkbot.logger import log
-from talkbot.reactions import process_chat_left, process_chat_joined, process_entities
+from talkbot.reactor import MessageReactor
 from talkbot.storage import init_database
 
 BOT_TOKEN = "<your token here>"
@@ -19,9 +19,6 @@ BOT_TOKEN = "<your token here>"
 
 class TelegramBot:
     BASE_URI = "https://api.telegram.org/bot{0.token}/"
-    known_commands = {
-
-    }
 
     def __init__(self, session, token):
         self.session = session
@@ -49,11 +46,11 @@ class TelegramBot:
             msg = "{error_code} | {description} ".format(**response)
             log.error(msg)
 
-    async def reply(self, chat, sender=None):
+    async def pong(self, chat, sender=None):
         name = sender['first_name']
         payload = {
             'chat_id': chat['id'],
-            'text': 'confirmed at {} from {}'.format(datetime.datetime.now().isoformat('T'), name)
+            'text': '{} confirmed at {}.'.format(name, datetime.datetime.now().isoformat('T'))
         }
         return await self.send_message(payload)
 
@@ -92,30 +89,31 @@ class TelegramBot:
         self.update_offset = last_update + 1
 
     async def on_message(self, message):
-        message_text = message.get('text')
-        left_chat_member = message.get('left_chat_member')
-        new_chat_member = message.get('new_chat_member')
 
-        entities = message.get('entities', [])
-        command_ents = filter(lambda e: e['type'] == 'bot_command', entities)
-        for marker in command_ents:
-            cmd = message_text[marker['offset']:marker['length']].strip('/')
-            await self.on_command(cmd)
+        reactor = MessageReactor(message)
+        rv = [rv async for rv in reactor if rv]
+        if len(rv):
+            payload = {
+                'chat_id': message['chat']['id'],
+            }
+            payload.update(rv[0])
+            await self.send_message(payload)
 
-
-        log.info("Message: %s", message_text)
-
-        if message_text:
-            await self.reply(message['chat'], message.get('from'))
-        if left_chat_member:
-            process_chat_left(self, left_chat_member, message['chat'])
-        if new_chat_member:
-            process_chat_joined(self, new_chat_member, message['chat'])
-
-        [process_entities(self, entry, message) for entry in entities]
-
-    async def on_command(self, cmd):
-        pass
+        #
+        # message_text = message.get('text')
+        #
+        #
+        #
+        # # try to react
+        # if message_text:
+        #     log.info("Message: %s", message_text)
+        #     react = make_reaction()
+        #     if react:
+        #         payload = {
+        #             'chat_id': message['chat']['id'],
+        #             'text': react
+        #         }
+        #         await self.send_message(payload)
 
 
 async def main(loop, connector):

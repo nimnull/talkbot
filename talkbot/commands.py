@@ -1,2 +1,2 @@
-def add_reaction():
+def add_reaction(message):
     pass
