@@ -1,6 +1,4 @@
-from functools import partial
-
-from talkbot.commands import add_reaction
+from . import commands
 from .logger import log
 
 
@@ -9,7 +7,8 @@ class MessageReactor:
     next_step = None
 
     commands_map = {
-        'add_reaction': add_reaction
+        'add_reaction': commands.add_reaction,
+        'start': commands.start
     }
 
     def __init__(self, message):
@@ -17,21 +16,12 @@ class MessageReactor:
         self.message_text = message.get('text')
         self.response = None
 
-    def extract_entities(self, message):
-        log.debug("Process entities")
+    def process_commands(self, message):
+        log.debug("Process commands")
         entities = message.get('entities', [])
         command_ents = [e for e in entities if e['type'] == 'bot_command']
 
-        if len(command_ents):
-            self.next_step = partial(self.process_commands, command_ents)
-            return False
-
-        self.next_step = self.search_reactions
-        return False
-
-    def process_commands(self, command_entries, message):
-        log.debug("Process commands")
-        for marker in command_entries:
+        for marker in command_ents:
             start = marker['offset']
             stop = marker['offset'] + marker['length']
             cmd = self.message_text[start:stop].strip('/')
@@ -39,29 +29,28 @@ class MessageReactor:
             command_executor = self.commands_map.get(cmd)
             log.debug("Executor '%s'" % command_executor)
             if command_executor is not None:
-                return command_executor(message)
+                return command_executor(self, message)
             else:
+                name = message['from'].get('username', message['from']['first_name'])
+                self.response = {
+                    'text': "There is no command '/{}', @{}".format(cmd, name)
+                }
                 return None
-        return False
+
+        self.next_step = self.search_reactions
+        return True
 
     def search_reactions(self, message):
         log.debug("Search reactions")
         pass
 
     def __aiter__(self):
-        self.next_step = self.extract_entities
+        self.next_step = self.process_commands
         return self
 
     async def __anext__(self):
-        rv = self.next_step(self.message)
-        log.debug("RV '%s'" % rv)
-        if rv is None:
-            raise StopAsyncIteration
+        proceed = self.next_step(self.message)
+        if proceed:
+            return proceed
         else:
-            return rv
-
-
-
-# entities -> commands -> search reactions
-#                |              |
-# respond       <-             <-
+            raise StopAsyncIteration

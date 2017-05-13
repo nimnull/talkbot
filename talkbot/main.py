@@ -1,20 +1,21 @@
 import asyncio
+import os
+import signal
 
 from http import HTTPStatus
 from urllib.parse import urljoin
 
 import aiohttp
 import datetime
-
 import inject
+import uvloop
+
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from talkbot.entities import Config
 from talkbot.logger import log
 from talkbot.reactor import MessageReactor
 from talkbot.storage import init_database
-
-BOT_TOKEN = "<your token here>"
 
 
 class TelegramBot:
@@ -89,15 +90,19 @@ class TelegramBot:
         self.update_offset = last_update + 1
 
     async def on_message(self, message):
-
         reactor = MessageReactor(message)
-        rv = [rv async for rv in reactor if rv]
-        if len(rv):
-            payload = {
-                'chat_id': message['chat']['id'],
-            }
-            payload.update(rv[0])
-            await self.send_message(payload)
+
+        async for rv in reactor:
+            log.debug("RV '%s'" % rv)
+
+        if reactor.response is None:
+            return
+
+        payload = {
+            'chat_id': message['chat']['id'],
+        }
+        payload.update(reactor.response)
+        await self.send_message(payload)
 
         #
         # message_text = message.get('text')
@@ -127,6 +132,15 @@ async def main(loop, connector):
 
 
 def init(config):
+    asyncio.set_event_loop(None)
+
+    pid = os.getppid()
+
+    def _sigint(signum, frame):
+        os.kill(pid, signal.SIGINT)
+
+    # send SIGINT instead of SIGTERM to unify handling
+    signal.signal(signal.SIGTERM, _sigint)
 
     def config_injections(binder):
         binder.bind(Config, Config.load_config(config))
@@ -134,13 +148,15 @@ def init(config):
 
     inject.configure(config_injections)
 
-    loop = asyncio.get_event_loop()
-    conn = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=loop)
+    loop = uvloop.new_event_loop()
+    asyncio.set_event_loop(loop)
+    connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=loop)
+
     try:
-        loop.run_until_complete(main(loop, conn))
+        loop.run_until_complete(main(loop, connector))
     except KeyboardInterrupt:
         log.info('Interrupted by user')
     finally:
-        conn.close()
+        connector.close()
         loop.close()
 
