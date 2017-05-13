@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import signal
 
@@ -13,7 +14,7 @@ import uvloop
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from talkbot.entities import Config
-from talkbot.logger import log
+from talkbot.logger import log, setup_logging
 from talkbot.reactor import MessageReactor
 from talkbot.storage import init_database
 
@@ -131,6 +132,9 @@ def init(config):
         binder.bind_to_provider(AsyncIOMotorDatabase, init_database)
 
     inject.configure(config_injections)
+
+    setup_logging(log)
+    log.debug("Loglevel set to %s", logging.getLevelName(log.getEffectiveLevel()))
 
     loop = uvloop.new_event_loop()
     asyncio.set_event_loop(loop)

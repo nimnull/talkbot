@@ -3,7 +3,7 @@ from collections import namedtuple
 import trafaret as t
 
 
-class Config(namedtuple('BaseConfig', 'token, mongo')):
+class Config(namedtuple('BaseConfig', 'token, mongo, loglevel')):
     __slots__ = ()
     mongo_uri_re = re.compile(
         r'^(?:mongodb)://'  # mongodb://
@@ -19,7 +19,8 @@ class Config(namedtuple('BaseConfig', 'token, mongo')):
         'mongo': {
             'uri': 'mongodb://localhost',
             'db': 'talkbot'
-        }
+        },
+        'loglevel': 'INFO'
     }
 
     trafaret = t.Dict({
@@ -27,7 +28,8 @@ class Config(namedtuple('BaseConfig', 'token, mongo')):
         'mongo': t.Dict({
             'uri': t.String(regex=mongo_uri_re),
             'db': t.String
-        })
+        }),
+        'loglevel': t.Enum('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
     })
 
     @classmethod

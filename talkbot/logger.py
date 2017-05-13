@@ -1,6 +1,23 @@
 import logging
 import sys
 
-log = logging.getLogger(__name__)
+import inject
+
+from .entities import Config
+
+log = logging.getLogger('talkbot')
 log.addHandler(logging.StreamHandler(sys.stdout))
-log.setLevel(logging.DEBUG)
+
+
+levels = {
+    'CRITICAL': logging.CRITICAL,
+    'ERROR': logging.ERROR,
+    'WARNING': logging.WARNING,
+    'INFO': logging.INFO,
+    'DEBUG': logging.DEBUG,
+    'NOTSET': logging.NOTSET
+}
+
+@inject.param('config', Config)
+def setup_logging(log, config=None):
+    log.setLevel(logging.DEBUG)
