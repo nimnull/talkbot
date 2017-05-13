@@ -29,7 +29,7 @@ class MessageReactor:
             command_executor = self.commands_map.get(cmd)
             log.debug("Executor '%s'" % command_executor)
             if command_executor is not None:
-                return command_executor(self, message)
+                return command_executor(self, cmd, message)
             else:
                 name = message['from'].get('username', message['from']['first_name'])
                 self.response = {

@@ -104,22 +104,6 @@ class TelegramBot:
         payload.update(reactor.response)
         await self.send_message(payload)
 
-        #
-        # message_text = message.get('text')
-        #
-        #
-        #
-        # # try to react
-        # if message_text:
-        #     log.info("Message: %s", message_text)
-        #     react = make_reaction()
-        #     if react:
-        #         payload = {
-        #             'chat_id': message['chat']['id'],
-        #             'text': react
-        #         }
-        #         await self.send_message(payload)
-
 
 async def main(loop, connector):
     session = aiohttp.ClientSession(connector=connector, loop=loop, conn_timeout=5)
