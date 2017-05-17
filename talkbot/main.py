@@ -22,11 +22,12 @@ from talkbot.storage import init_database
 class TelegramBot:
     BASE_URI = "https://api.telegram.org/bot{0.token}/"
 
-    def __init__(self, session, token):
-        self.session = session
+    def __init__(self, token):
         self.update_offset = 0
         self.username = "ZamzaBot"
         self.token = token
+        self.connector = inject.instance(aiohttp.TCPConnector)
+        self.session = aiohttp.ClientSession(connector=self.connector)
 
     def _get_uri(self, endpoint):
         return urljoin(self.BASE_URI.format(self), endpoint)
@@ -58,8 +59,10 @@ class TelegramBot:
 
     async def send_message(self, payload):
         payload['disable_notification'] = True
+
         resp = await self.session.post(self._get_uri('sendMessage'), data=payload)
         r_data = await self._raise_for_status(resp)
+
         try:
             result = self._raise_for_response(r_data)
             log.info("sent: %s", result)
@@ -69,9 +72,10 @@ class TelegramBot:
     async def get_updates(self):
         uri = self._get_uri('getUpdates')
         params = self.update_offset and {'offset': self.update_offset} or None
-        resp = await self.session.get(uri, params=params)
 
+        resp = await self.session.get(uri, params=params)
         r_data = await self._raise_for_status(resp)
+
         try:
             result = self._raise_for_response(r_data)
             if len(result):
@@ -106,10 +110,9 @@ class TelegramBot:
         await self.send_message(payload)
 
 
-async def main(loop, connector):
-    session = aiohttp.ClientSession(connector=connector, loop=loop, conn_timeout=5)
-    token = inject.instance(Config).token
-    bot = TelegramBot(session, token)
+@inject.params(config=Config)
+async def main(config=None):
+    bot = TelegramBot(config.token)
 
     while True:
         await bot.get_updates()
@@ -127,21 +130,25 @@ def init(config):
     # send SIGINT instead of SIGTERM to unify handling
     signal.signal(signal.SIGTERM, _sigint)
 
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    loop = uvloop.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=loop)
+    # session = aiohttp.ClientSession(connector=connector, loop=loop, conn_timeout=5)
+
     def config_injections(binder):
+        binder.bind(aiohttp.TCPConnector, connector)
         binder.bind(Config, Config.load_config(config))
-        binder.bind_to_provider(AsyncIOMotorDatabase, init_database)
+        binder.bind_to_constructor(AsyncIOMotorDatabase, init_database)
 
     inject.configure(config_injections)
 
     setup_logging(log)
     log.debug("Loglevel set to %s", logging.getLevelName(log.getEffectiveLevel()))
 
-    loop = uvloop.new_event_loop()
-    asyncio.set_event_loop(loop)
-    connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=loop)
-
     try:
-        loop.run_until_complete(main(loop, connector))
+        loop.run_until_complete(main())
     except KeyboardInterrupt:
         log.info('Interrupted by user')
     finally:

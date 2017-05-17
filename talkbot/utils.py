@@ -1,5 +1,8 @@
 import re
 
+import aiohttp
+import inject
+
 
 url_regex = re.compile(
     r'^(?:http|ftp)s?://'  # http:// or https://
@@ -13,3 +16,12 @@ url_regex = re.compile(
 
 def get_user_repr(user):
     return user.get('username', " ".join([user['first_name'], user.get('last_name')]))
+
+
+@inject.params(connector=aiohttp.TCPConnector)
+async def fetch_file(url, connector=None):
+    async with aiohttp.ClientSession(connector=connector) as session:
+        rv = await session.get(url)
+    rv.raise_for_status()
+    return await rv.content.read()
+

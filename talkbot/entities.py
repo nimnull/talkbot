@@ -1,6 +1,8 @@
 import re
 from collections import namedtuple
+
 import trafaret as t
+from trafaret.contrib.object_id import MongoId
 
 
 class Config(namedtuple('BaseConfig', 'token, mongo, loglevel')):
@@ -45,3 +47,46 @@ class Config(namedtuple('BaseConfig', 'token, mongo, loglevel')):
 
     def to_dict(self):
         return self._asdict()
+
+
+class User(namedtuple('BaseUser', 'id,ext_id,first_name,last_name,username')):
+
+    trafaret = t.Dict({
+        'id': t.Int,
+        'first_name': t.String,
+        'last_name': t.String,
+        'username': t.String
+    }).make_optional('username', 'last_name')
+
+    def to_dict(self):
+        dict_repr = self._asdict()
+        dict_repr['_id'] = self.id
+        return dict_repr
+
+
+class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,created_at,created_by')):
+    collection = 'reactions'
+
+    trafaret = t.Dict({
+        'id': t.Or(t.String | MongoId(allow_blank=True)),
+        'patterns': t.List(t.String, min_length=1),
+        'image_url': t.URL(allow_blank=True),
+        'image_id': t.String(allow_blank=True),
+        'text': t.String(allow_blank=True),
+        'created_at': t.Int,
+        'created_by': User.trafaret
+    }).make_optional('image_id', 'image_url', 'text')
+
+    @classmethod
+    def from_dict(cls, **kwargs):
+        mutable = kwargs.copy()
+        if '_id' in kwargs:
+            mutable['id'] = mutable.pop('_id')
+        checked = Reaction.trafaret.check(mutable)
+        return cls(**checked)
+
+    def to_dict(self):
+        dict_repr = self._asdict()
+        dict_repr['_id'] = self.id
+        return dict_repr
+

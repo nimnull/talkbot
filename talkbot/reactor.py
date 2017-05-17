@@ -1,3 +1,5 @@
+import asyncio
+
 from . import commands
 from .logger import log
 
@@ -16,7 +18,7 @@ class MessageReactor:
         self.message_text = message.get('text')
         self.response = None
 
-    def process_commands(self, message):
+    async def process_commands(self, message):
         log.debug("Process commands")
         entities = message.get('entities', [])
         command_ents = [e for e in entities if e['type'] == 'bot_command']
@@ -29,7 +31,11 @@ class MessageReactor:
             command_executor = self.commands_map.get(cmd)
             log.debug("Executor '%s'" % command_executor)
             if command_executor is not None:
-                return command_executor(self, cmd, message)
+                if asyncio.iscoroutinefunction(command_executor):
+                    log.debug("Executor is coroutine")
+                    return await command_executor(self, cmd, message)
+                else:
+                    return command_executor(self, cmd, message)
             else:
                 name = message['from'].get('username', message['from']['first_name'])
                 self.response = {
@@ -40,7 +46,7 @@ class MessageReactor:
         self.next_step = self.search_reactions
         return True
 
-    def search_reactions(self, message):
+    async def search_reactions(self, message):
         log.debug("Search reactions")
         pass
 
@@ -49,7 +55,7 @@ class MessageReactor:
         return self
 
     async def __anext__(self):
-        proceed = self.next_step(self.message)
+        proceed = await self.next_step(self.message)
         if proceed:
             return proceed
         else:
