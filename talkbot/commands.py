@@ -1,15 +1,9 @@
 import re
-from http import HTTPStatus
 from itertools import chain
 
-import aiohttp
-import inject
-from bson import ObjectId
-from motor.motor_asyncio import AsyncIOMotorDatabase
-
-from talkbot.entities import Reaction
-from talkbot.utils import get_user_repr, url_regex, fetch_file
+from .entities import Reaction
 from .logger import log
+from .utils import get_user_repr, url_regex
 
 
 async def add_reaction(reactor, cmd, message):
@@ -27,7 +21,7 @@ async def add_reaction(reactor, cmd, message):
         reaction_content = None
 
     patterns = patterns.split(',')
-    patterns = [p.strip() for p in patterns if p]
+    patterns = [p.strip().lower() for p in patterns if p]
 
     reaction = {
         'id': None,
@@ -45,8 +39,7 @@ async def add_reaction(reactor, cmd, message):
     elif reaction_content:
         reaction['text'] = reaction_content
 
-    db = inject.instance(AsyncIOMotorDatabase)
-    reactions = [entity async for entity in db[Reaction.collection].find({'patterns': {'$in': patterns}})]
+    reactions = [entity async for entity in Reaction.find_by_pattern(patterns)]
     if reactions:
         found_patterns = map(lambda r: r['patterns'], reactions)
         reactor.response = {
@@ -54,7 +47,7 @@ async def add_reaction(reactor, cmd, message):
         }
         return
 
-    await db[Reaction.collection].insert_one(Reaction.from_dict(**reaction).to_dict())
+    await Reaction.create(reaction)
 
     reactor.response = {
         'text': "Saved reaction for `{}` by {}".format(", ".join(patterns), get_user_repr(message['from']))

@@ -1,7 +1,9 @@
 import re
 from collections import namedtuple
 
+import inject
 import trafaret as t
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from trafaret.contrib.object_id import MongoId
 
 
@@ -56,7 +58,7 @@ class User(namedtuple('BaseUser', 'id,ext_id,first_name,last_name,username')):
         'first_name': t.String,
         'last_name': t.String,
         'username': t.String
-    }).make_optional('username', 'last_name')
+    }).make_optional('username', 'last_name').ignore_extra('*')
 
     def to_dict(self):
         dict_repr = self._asdict()
@@ -89,4 +91,17 @@ class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,c
         dict_repr = self._asdict()
         dict_repr['_id'] = self.id
         return dict_repr
+
+    @classmethod
+    @inject.params(db=AsyncIOMotorDatabase)
+    async def create(cls, data_dict, db=None):
+        valid_data = cls.trafaret.check(data_dict)
+        res = await db[cls.collection].insert_one(valid_data)
+        data_dict['id'] = res.inserted_id
+        return cls.from_dict(**data_dict)
+
+    @staticmethod
+    @inject.params(db=AsyncIOMotorDatabase)
+    def find_by_pattern(patterns, db=None):
+        return db[Reaction.collection].find({'patterns': {'$in': patterns}})
 

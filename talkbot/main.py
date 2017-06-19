@@ -1,7 +1,5 @@
 import asyncio
 import logging
-import os
-import signal
 
 from http import HTTPStatus
 from urllib.parse import urljoin
@@ -11,12 +9,14 @@ import datetime
 import inject
 import uvloop
 
+from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from talkbot.entities import Config
-from talkbot.logger import log, setup_logging
-from talkbot.reactor import MessageReactor
-from talkbot.storage import init_database
+from .entities import Config
+from .logger import log, setup_logging
+from .reactor import MessageReactor
+from .storage import init_database
+from .utils import run_app
 
 
 class TelegramBot:
@@ -60,28 +60,23 @@ class TelegramBot:
     async def send_message(self, payload):
         payload['disable_notification'] = True
 
-        resp = await self.session.post(self._get_uri('sendMessage'), data=payload)
-        r_data = await self._raise_for_status(resp)
-
         try:
+            resp = await self.session.post(self._get_uri('sendMessage'), data=payload)
+            r_data = await self._raise_for_status(resp)
             result = self._raise_for_response(r_data)
             log.info("sent: %s", result)
         except ValueError as ex:
                 log.error("Message send failed %s", ex)
 
-    async def get_updates(self):
-        uri = self._get_uri('getUpdates')
-        params = self.update_offset and {'offset': self.update_offset} or None
-
-        resp = await self.session.get(uri, params=params)
-        r_data = await self._raise_for_status(resp)
-
+    async def send_photo(self, payload):
+        payload['disable_notification'] = True
         try:
+            resp = await self.session.post(self._get_uri('sendPhoto'), data=payload)
+            r_data = await self._raise_for_status(resp)
             result = self._raise_for_response(r_data)
-            if len(result):
-                await self.on_update(result)
+            log.info("sent: %s", result)
         except ValueError as ex:
-            log.error("Failed to retrieve updates: %s", ex)
+                log.error("Message send failed %s", ex)
 
     async def on_update(self, data):
         last_update = max(map(lambda r: r['update_id'], data))
@@ -100,58 +95,65 @@ class TelegramBot:
         async for rv in reactor:
             log.debug("RV '%s'" % rv)
 
-        if reactor.response is None:
+        if not reactor.response:
             return
 
         payload = {
             'chat_id': message['chat']['id'],
         }
         payload.update(reactor.response)
-        await self.send_message(payload)
+
+        if 'photo' in payload:
+            await self.send_photo(payload)
+        else:
+            await self.send_message(payload)
 
 
-@inject.params(config=Config)
-async def main(config=None):
-    bot = TelegramBot(config.token)
-
-    while True:
-        await bot.get_updates()
-        await asyncio.sleep(3)
+@inject.params(bot=TelegramBot)
+async def on_update(request, bot=None):
+    data = await request.json()
+    await bot.on_update(data)
+    return web.Response()
 
 
-def init(config):
-    asyncio.set_event_loop(None)
-
-    pid = os.getppid()
-
-    def _sigint(signum, frame):
-        os.kill(pid, signal.SIGINT)
-
-    # send SIGINT instead of SIGTERM to unify handling
-    signal.signal(signal.SIGTERM, _sigint)
-
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    loop = uvloop.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=loop)
-    # session = aiohttp.ClientSession(connector=connector, loop=loop, conn_timeout=5)
+def on_startup(app):
 
     def config_injections(binder):
+        config = Config.load_config(app['config'])
+        connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=app.loop)
+        bot = TelegramBot(config.token)
+        # injection bindings
         binder.bind(aiohttp.TCPConnector, connector)
-        binder.bind(Config, Config.load_config(config))
+        binder.bind(Config, config)
+        binder.bind(TelegramBot, bot)
         binder.bind_to_constructor(AsyncIOMotorDatabase, init_database)
 
     inject.configure(config_injections)
 
     setup_logging(log)
-    log.debug("Loglevel set to %s", logging.getLevelName(log.getEffectiveLevel()))
 
-    try:
-        loop.run_until_complete(main())
-    except KeyboardInterrupt:
-        log.info('Interrupted by user')
-    finally:
-        connector.close()
-        loop.close()
+
+def on_cleanup(app):
+    pass
+
+
+def init(config):
+    log.debug("Loglevel set to %s", logging.getLevelName(log.getEffectiveLevel()))
+    asyncio.set_event_loop(None)
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    loop = uvloop.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # session = aiohttp.ClientSession(connector=connector, loop=loop, conn_timeout=5)
+
+    app = web.Application()
+    app['config'] = config
+
+    app.on_startup.append(on_startup)
+    app.on_cleanup.append(on_cleanup)
+
+    app.router.add_get('/update/', on_update)
+
+    run_app(app)
+
 

@@ -1,6 +1,10 @@
 import asyncio
 
+import inject
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
 from . import commands
+from .entities import Reaction
 from .logger import log
 
 
@@ -17,6 +21,8 @@ class MessageReactor:
         self.message = message
         self.message_text = message.get('text')
         self.response = None
+        self.db = inject.instance(AsyncIOMotorDatabase)
+        self.response = {}
 
     async def process_commands(self, message):
         log.debug("Process commands")
@@ -47,8 +53,28 @@ class MessageReactor:
         return True
 
     async def search_reactions(self, message):
-        log.debug("Search reactions")
-        pass
+        # short circuit
+        if not self.message_text:
+            return
+
+        found = None
+        # TODO: optimize it
+        async for reaction in self.db[Reaction.collection].find():
+            r = Reaction.from_dict(**reaction)
+            for pattern in r.patterns:
+                if pattern in self.message_text.lower():
+                    found = r
+
+        # short circuit
+        if not found:
+            return
+
+        if found.image_id or found.image_url:
+            self.response['photo'] = found.image_id or found.image_url
+        elif found.text:
+            self.response['text'] = found.text
+        else:
+            log.debug("Broken reaction: %s", found.to_dict())
 
     def __aiter__(self):
         self.next_step = self.process_commands
