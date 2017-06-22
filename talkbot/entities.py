@@ -6,8 +6,10 @@ import trafaret as t
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from trafaret.contrib.object_id import MongoId
 
+from .trafarets import FilePath
 
-class Config(namedtuple('BaseConfig', 'token, mongo, loglevel')):
+
+class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslprivkey')):
     __slots__ = ()
     mongo_uri_re = re.compile(
         r'^(?:mongodb)://'  # mongodb://
@@ -33,7 +35,9 @@ class Config(namedtuple('BaseConfig', 'token, mongo, loglevel')):
             'uri': t.String(regex=mongo_uri_re),
             'db': t.String
         }),
-        'loglevel': t.Enum('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+        'loglevel': t.Enum('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'),
+        'sslchain': FilePath,
+        'sslprivkey': FilePath
     })
 
     @classmethod

@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from http import HTTPStatus
+from ssl import SSLContext, SSLError
 from urllib.parse import urljoin
 
 import aiohttp
@@ -119,12 +120,12 @@ async def on_update(request, bot=None):
 def on_startup(app):
 
     def config_injections(binder):
-        config = Config.load_config(app['config'])
+
         connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=app.loop)
-        bot = TelegramBot(config.token)
+        bot = TelegramBot(app['config'].token)
         # injection bindings
         binder.bind(aiohttp.TCPConnector, connector)
-        binder.bind(Config, config)
+        binder.bind(Config, app['config'])
         binder.bind(TelegramBot, bot)
         binder.bind_to_constructor(AsyncIOMotorDatabase, init_database)
 
@@ -137,6 +138,16 @@ def on_cleanup(app):
     pass
 
 
+def create_ssl_context(config):
+    context = SSLContext()
+    context.check_hostname = True
+    try:
+        context.load_cert_chain(config.sslchain, config.sslprivkey)
+    except SSLError:
+        log.exception("Failed to load ssl certificates", exc_info=True)
+        raise
+
+
 def init(config):
     log.debug("Loglevel set to %s", logging.getLevelName(log.getEffectiveLevel()))
     asyncio.set_event_loop(None)
@@ -147,13 +158,14 @@ def init(config):
     # session = aiohttp.ClientSession(connector=connector, loop=loop, conn_timeout=5)
 
     app = web.Application()
-    app['config'] = config
+    app['config'] = Config.load_config(config)
+    ssl_context = create_ssl_context(app['config'])
 
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)
 
     app.router.add_get('/update/', on_update)
 
-    run_app(app)
+    run_app(app, loop, ssl_context=ssl_context)
 
 

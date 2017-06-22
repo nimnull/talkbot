@@ -18,6 +18,7 @@ levels = {
     'NOTSET': logging.NOTSET
 }
 
+
 @inject.param('config', Config)
 def setup_logging(log, config=None):
     log.setLevel(logging.DEBUG)
