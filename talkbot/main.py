@@ -1,7 +1,6 @@
 import asyncio
 import logging
 
-from http import HTTPStatus
 from ssl import SSLContext, SSLError
 from urllib.parse import urljoin
 
@@ -32,11 +31,12 @@ class TelegramBot:
     def _get_uri(self, endpoint):
         return urljoin(self.BASE_URI.format(self), endpoint)
 
-    def _raise_for_response(self, response):
-        if response['ok']:
-            return response['result']
+    async def _raise_for_response(self, response):
+        r_data = await response.json()
+        if r_data['ok']:
+            return r_data['result']
         else:
-            msg = "{error_code} | {description} ".format(**response)
+            msg = "{error_code} | {description} ".format(**r_data)
             log.error(msg)
 
     async def pong(self, chat, sender=None):
@@ -52,8 +52,7 @@ class TelegramBot:
 
         try:
             resp = await self.session.post(self._get_uri('sendMessage'), data=payload)
-            r_data = await resp.json()
-            result = self._raise_for_response(r_data)
+            result = await self._raise_for_response(resp)
             log.info("sent: %s", result)
         except aiohttp.ClientResponseError as ex:
                 log.error("Message send failed %s", ex, exc_info=True)
@@ -62,8 +61,7 @@ class TelegramBot:
         payload['disable_notification'] = True
         try:
             resp = await self.session.post(self._get_uri('sendPhoto'), data=payload)
-            r_data = await resp.json()
-            result = self._raise_for_response(r_data)
+            result = await self._raise_for_response(resp)
             log.info("sent: %s", result)
         except aiohttp.ClientResponseError as ex:
                 log.error("Message send failed %s", ex, exc_info=True)
@@ -98,6 +96,13 @@ class TelegramBot:
         else:
             await self.send_message(payload)
 
+    async def set_hook(self):
+        payload = {
+            'url': "https://talkbot1.mediasapiens.org/updates/"
+        }
+        resp = await self.session.post(self._get_uri('setWebhook'), data=payload)
+        self._raise_for_response(resp)
+
 
 @inject.params(bot=TelegramBot)
 async def on_update(request, bot=None):
@@ -107,19 +112,20 @@ async def on_update(request, bot=None):
 
 
 def on_startup(app):
+    connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=app.loop)
+    session = aiohttp.ClientSession(connector=connector, raise_for_status=True)
+    bot = TelegramBot(app['config'].token, session)
 
     def config_injections(binder):
-        connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=app.loop)
-        session = aiohttp.ClientSession(connector=connector, raise_for_status=True)
-        bot = TelegramBot(app['config'].token, session)
         # injection bindings
         binder.bind(TelegramBot, bot)
         binder.bind(Config, app['config'])
         binder.bind_to_constructor(AsyncIOMotorDatabase, init_database)
 
     inject.configure(config_injections)
-
     setup_logging(log)
+
+    app.loop.run_until_complete(bot.set_hook())
 
 
 def on_cleanup(app):
@@ -151,7 +157,7 @@ def init(config):
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)
 
-    app.router.add_get('/update/', on_update)
+    app.router.add_get('/updates/', on_update)
 
     run_app(app, loop, ssl_context=ssl_context)
 
