@@ -67,16 +67,11 @@ class TelegramBot:
         except aiohttp.ClientResponseError as ex:
                 log.error("Message send failed %s", ex, exc_info=True)
 
-    async def on_update(self, data):
-        log.info("Got an update: %s", data)
-        last_update = max(map(lambda r: r['update_id'], data))
-        for update in data:
-            message = update.get('message')
-            if message:
-                log.info("message: %s", message)
-                await self.on_message(message)
-
-        self.update_offset = last_update + 1
+    async def on_update(self, update):
+        message = update.get('message') or update.get('channel_post')
+        if message:
+            log.info("message: %s", message)
+            await self.on_message(message)
 
     async def on_message(self, message):
         reactor = MessageReactor(message)
