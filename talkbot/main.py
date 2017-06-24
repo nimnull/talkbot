@@ -101,7 +101,7 @@ class TelegramBot:
             'url': "https://talkbot1.mediasapiens.org/updates/"
         }
         resp = await self.session.post(self._get_uri('setWebhook'), data=payload)
-        self._raise_for_response(resp)
+        await self._raise_for_response(resp)
 
 
 @inject.params(bot=TelegramBot)
