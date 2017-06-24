@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import ssl
 
 from ssl import SSLContext, SSLError
 from urllib.parse import urljoin
@@ -138,12 +139,13 @@ def on_cleanup(app):
 
 
 def create_ssl_context(config):
-    context = SSLContext()
+    context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     try:
         context.load_cert_chain(config.sslchain, config.sslprivkey)
     except SSLError:
         log.exception("Failed to load ssl certificates", exc_info=True)
         raise
+    return context
 
 
 def init(config):

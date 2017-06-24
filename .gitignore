@@ -89,4 +89,6 @@ ENV/
 .ropeproject
 
 # package configuration
+assets
 config.json
+*.pem
