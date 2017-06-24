@@ -140,7 +140,6 @@ def on_cleanup(app):
 
 def create_ssl_context(config):
     context = SSLContext()
-    context.check_hostname = True
     try:
         context.load_cert_chain(config.sslchain, config.sslprivkey)
     except SSLError:
