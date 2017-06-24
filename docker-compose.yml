@@ -9,6 +9,7 @@ services:
     command: /bin/sh -c "python setup.py install && talk_bot run -c /srv/config.json"
     volumes:
       - .:/srv
+      - /etc/letsencrypt/live/talkbot1.mediasapiens.org:/etc/certs
     links:
       - mongodb
     ports:
