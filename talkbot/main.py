@@ -23,25 +23,14 @@ from .utils import run_app
 class TelegramBot:
     BASE_URI = "https://api.telegram.org/bot{0.token}/"
 
-    def __init__(self, token):
+    def __init__(self, token, session):
         self.update_offset = 0
         self.username = "ZamzaBot"
         self.token = token
-        self.connector = inject.instance(aiohttp.TCPConnector)
-        self.session = aiohttp.ClientSession(connector=self.connector)
+        self.session = session
 
     def _get_uri(self, endpoint):
         return urljoin(self.BASE_URI.format(self), endpoint)
-
-    async def _raise_for_status(self, resp):
-        if resp.status == HTTPStatus.OK:
-            rv = await resp.json()
-            resp.release()
-            return rv
-        else:
-            rv = await resp.text()
-            resp.close()
-            raise ValueError("Status: %s\n%s", resp.status, rv)
 
     def _raise_for_response(self, response):
         if response['ok']:
@@ -63,25 +52,25 @@ class TelegramBot:
 
         try:
             resp = await self.session.post(self._get_uri('sendMessage'), data=payload)
-            r_data = await self._raise_for_status(resp)
+            r_data = await resp.json()
             result = self._raise_for_response(r_data)
             log.info("sent: %s", result)
-        except ValueError as ex:
-                log.error("Message send failed %s", ex)
+        except aiohttp.ClientResponseError as ex:
+                log.error("Message send failed %s", ex, exc_info=True)
 
     async def send_photo(self, payload):
         payload['disable_notification'] = True
         try:
             resp = await self.session.post(self._get_uri('sendPhoto'), data=payload)
-            r_data = await self._raise_for_status(resp)
+            r_data = await resp.json()
             result = self._raise_for_response(r_data)
             log.info("sent: %s", result)
-        except ValueError as ex:
-                log.error("Message send failed %s", ex)
+        except aiohttp.ClientResponseError as ex:
+                log.error("Message send failed %s", ex, exc_info=True)
 
     async def on_update(self, data):
         last_update = max(map(lambda r: r['update_id'], data))
-        log.info("Got update: %s", data)
+        log.info("Got an update: %s", data)
         for update in data:
             message = update.get('message')
             if message:
@@ -120,13 +109,12 @@ async def on_update(request, bot=None):
 def on_startup(app):
 
     def config_injections(binder):
-
         connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=app.loop)
-        bot = TelegramBot(app['config'].token)
+        session = aiohttp.ClientSession(connector=connector, raise_for_status=True)
+        bot = TelegramBot(app['config'].token, session)
         # injection bindings
-        binder.bind(aiohttp.TCPConnector, connector)
-        binder.bind(Config, app['config'])
         binder.bind(TelegramBot, bot)
+        binder.bind(Config, app['config'])
         binder.bind_to_constructor(AsyncIOMotorDatabase, init_database)
 
     inject.configure(config_injections)
