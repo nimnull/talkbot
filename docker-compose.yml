@@ -3,10 +3,10 @@ services:
   mongodb:
     image: mongo:3.4
     volumes:
-      - /opt/mongo:/data
+      - /tmp/mongo:/data
   talkbot:
-    image: python:3.6-alpine
-    command: talk_bot run -c /srv/config.json
+    build: .
+    command: /bin/sh -c "python setup.py install && talk_bot run -c /srv/config.json"
     volumes:
       - .:/srv
     links:
