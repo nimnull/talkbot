@@ -23,7 +23,7 @@ class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslpriv
     default = {
         'token': 'randomtoken',
         'mongo': {
-            'uri': 'mongodb://localhost',
+            'uri': 'mongodb://mongodb',
             'db': 'talkbot'
         },
         'loglevel': 'INFO'
