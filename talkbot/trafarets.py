@@ -11,8 +11,9 @@ class FilePath(t.String):
     def __repr__(self):
         return '<File>'
 
-    def check_value(self, value):
+    def check_and_return(self, value):
         val = super().check_and_return(value)
+        val = self.converter(val)
 
         if not os.path.exists(val):
             self._failure("Specified path '%s' does not exists" % val, value=val)
