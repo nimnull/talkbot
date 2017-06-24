@@ -150,7 +150,7 @@ def init(config):
 
     # session = aiohttp.ClientSession(connector=connector, loop=loop, conn_timeout=5)
 
-    app = web.Application()
+    app = web.Application(loop=loop)
     app['config'] = Config.load_config(config)
     ssl_context = create_ssl_context(app['config'])
 
