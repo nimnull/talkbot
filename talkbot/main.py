@@ -68,8 +68,8 @@ class TelegramBot:
                 log.error("Message send failed %s", ex, exc_info=True)
 
     async def on_update(self, data):
-        last_update = max(map(lambda r: r['update_id'], data))
         log.info("Got an update: %s", data)
+        last_update = max(map(lambda r: r['update_id'], data))
         for update in data:
             message = update.get('message')
             if message:
@@ -164,7 +164,6 @@ def init(config):
 
     app.router.add_route('POST', '/updates/', on_update)
     app.router.add_route('GET', '/', test_get)
-
 
     run_app(app, loop, ssl_context=ssl_context)
 
