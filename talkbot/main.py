@@ -125,7 +125,7 @@ def on_startup(app):
     inject.configure(config_injections)
     setup_logging(log)
 
-    app.loop.run_until_complete(bot.set_hook())
+    app.loop.create_task(bot.set_hook())
 
 
 def on_cleanup(app):
@@ -157,7 +157,7 @@ def init(config):
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)
 
-    app.router.add_get('/updates/', on_update)
+    app.router.add_route('POST', '/updates/', on_update)
 
     run_app(app, loop, ssl_context=ssl_context)
 
