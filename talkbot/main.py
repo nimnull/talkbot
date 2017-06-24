@@ -111,6 +111,11 @@ async def on_update(request, bot=None):
     return web.Response()
 
 
+async def test_get(request):
+    data = await request.text()
+    return web.Response(text='All OK')
+
+
 def on_startup(app):
     connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=app.loop)
     session = aiohttp.ClientSession(connector=connector, raise_for_status=True)
@@ -125,7 +130,7 @@ def on_startup(app):
     inject.configure(config_injections)
     setup_logging(log)
 
-    app.loop.create_task(bot.set_hook())
+    # app.loop.create_task(bot.set_hook())
 
 
 def on_cleanup(app):
@@ -148,9 +153,7 @@ def init(config):
     loop = uvloop.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    # session = aiohttp.ClientSession(connector=connector, loop=loop, conn_timeout=5)
-
-    app = web.Application(loop=loop)
+    app = web.Application(loop=loop, debug=True)
     app['config'] = Config.load_config(config)
     ssl_context = create_ssl_context(app['config'])
 
@@ -158,6 +161,8 @@ def init(config):
     app.on_cleanup.append(on_cleanup)
 
     app.router.add_route('POST', '/updates/', on_update)
+    app.router.add_route('GET', '/', test_get)
+
 
     run_app(app, loop, ssl_context=ssl_context)
 
