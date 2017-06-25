@@ -2,7 +2,6 @@ import asyncio
 import logging
 import ssl
 
-from ssl import SSLContext, SSLError
 from urllib.parse import urljoin
 
 import aiohttp
@@ -107,7 +106,7 @@ async def on_update(request, bot=None):
     return web.Response()
 
 
-async def test_get(request):
+async def on_ping(request):
     data = await request.text()
     return web.Response(text='All OK')
 
@@ -126,7 +125,7 @@ def on_startup(app):
     inject.configure(config_injections)
     setup_logging(log)
 
-    # app.loop.create_task(bot.set_hook())
+    app.loop.create_task(bot.set_hook())
 
 
 def on_cleanup(app):
@@ -137,7 +136,7 @@ def create_ssl_context(config):
     context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     try:
         context.load_cert_chain(config.sslchain, config.sslprivkey)
-    except SSLError:
+    except ssl.SSLError:
         log.exception("Failed to load ssl certificates", exc_info=True)
         raise
     return context
@@ -158,7 +157,7 @@ def init(config):
     app.on_cleanup.append(on_cleanup)
 
     app.router.add_route('POST', '/updates/', on_update)
-    app.router.add_route('GET', '/', test_get)
+    app.router.add_route('GET', '/ping', on_ping)
 
     run_app(app, loop, ssl_context=ssl_context)
 
