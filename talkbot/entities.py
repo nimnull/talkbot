@@ -84,7 +84,7 @@ class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,c
         'text': t.String(allow_blank=True),
         'created_at': t.Int,
         'created_by': User.trafaret,
-        'last_used': t.Int,
+        t.Key('last_used', default=0): t.Int,
     }).make_optional('image_id', 'image_url', 'text', 'last_used')
 
     @classmethod
