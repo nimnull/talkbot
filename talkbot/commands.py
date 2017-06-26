@@ -1,4 +1,5 @@
 import re
+from collections import Iterable
 from itertools import chain
 
 from .entities import Reaction
@@ -7,9 +8,9 @@ from .utils import get_user_repr, url_regex
 
 
 async def add_reaction(reactor, cmd, message):
-    # '/add_reaction действительно,в самом деле; http://cs4.pikabu.ru/images/big_size_comm/2015-04_1/14282673621008.png'
+    # '/add_reaction phrase1,phrase2;URL'
     text = message['text']
-    raw_text = re.sub(r"/%s\s+" % cmd, '', text)
+    raw_text = re.sub(r"/%s" % cmd, '', text).strip()
     splitted_text = raw_text.split(';', maxsplit=1)
 
     if len(splitted_text) > 1:
@@ -40,6 +41,7 @@ async def add_reaction(reactor, cmd, message):
         reaction['text'] = reaction_content
 
     reactions = [entity async for entity in Reaction.find_by_pattern(patterns)]
+
     if reactions:
         found_patterns = map(lambda r: r['patterns'], reactions)
         reactor.response = {

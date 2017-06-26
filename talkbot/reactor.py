@@ -37,11 +37,18 @@ class MessageReactor:
             command_executor = self.commands_map.get(cmd)
             log.debug("Executor '%s'" % command_executor)
             if command_executor is not None:
-                if asyncio.iscoroutinefunction(command_executor):
-                    log.debug("Executor is coroutine")
-                    return await command_executor(self, cmd, message)
-                else:
-                    return command_executor(self, cmd, message)
+                try:
+                    if asyncio.iscoroutinefunction(command_executor):
+                        log.debug("Executor is coroutine")
+                        return await command_executor(self, cmd, message)
+                    else:
+                        return command_executor(self, cmd, message)
+                except:
+                    log.error("Failed to process command %s", cmd, exc_info=True)
+                    self.response = {
+                        'text': "Failed to process %s" % cmd
+                    }
+                    return None
             else:
                 name = message['from'].get('username', message['from']['first_name'])
                 self.response = {
