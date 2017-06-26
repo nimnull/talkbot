@@ -66,15 +66,10 @@ def start(reactor, cmd, message):
 def help(reactor, cmd, message):
     reactor.response = {
         'chat_id': message['from']['id'],
-        'parse_mode': 'Markdown',
-        'text': """
-*Commands are:*
-
-`/add_reaction` — add some reaction from bot (text or image) for phrases
-Format: /add_reaction phrase1,[phrase2],...[phraseN];URL
-
-`/start` — dummy command
-
-`/help` — This help text
-"""
+        'parse_mode': "markdown",
+        'text': "*Commands are:*\n"
+                "`/add_reaction` — add some reaction from bot (text or image) for phrases\n"
+                "Format: /add_reaction phrase1,[phrase2],...[phraseN];URL\n\n"
+                "`/start` — dummy command\n\n"
+                "`/help` — This help text"
     }
