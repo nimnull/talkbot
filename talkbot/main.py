@@ -88,7 +88,7 @@ class TelegramBot:
 
         if 'photo' in payload:
             await self.send_photo(payload)
-        else:
+        elif 'text' in payload:
             await self.send_message(payload)
 
     async def set_hook(self):

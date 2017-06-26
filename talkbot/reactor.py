@@ -14,7 +14,8 @@ class MessageReactor:
 
     commands_map = {
         'add_reaction': commands.add_reaction,
-        'start': commands.start
+        'start': commands.start,
+        'help': commands.help
     }
 
     def __init__(self, message):
@@ -73,7 +74,7 @@ class MessageReactor:
                     found = r
 
         # short circuit
-        if not found:
+        if not found or found.on_hold:
             return
 
         if found.image_id or found.image_url:
@@ -82,6 +83,7 @@ class MessageReactor:
             self.response['text'] = found.text
         else:
             log.debug("Broken reaction: %s", found.to_dict())
+        found.update_usage()
 
     def __aiter__(self):
         self.next_step = self.process_commands

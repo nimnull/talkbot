@@ -2,6 +2,7 @@ import re
 from collections import namedtuple
 
 import inject
+import time
 import trafaret as t
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from trafaret.contrib.object_id import MongoId
@@ -9,7 +10,7 @@ from trafaret.contrib.object_id import MongoId
 from .trafarets import FilePath
 
 
-class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslprivkey')):
+class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslprivkey,reaction_threshold')):
     __slots__ = ()
     mongo_uri_re = re.compile(
         r'^(?:mongodb)://'  # mongodb://
@@ -26,7 +27,8 @@ class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslpriv
             'uri': 'mongodb://mongodb',
             'db': 'talkbot'
         },
-        'loglevel': 'INFO'
+        'loglevel': 'INFO',
+        'reaction_threshold': 4,
     }
 
     trafaret = t.Dict({
@@ -37,7 +39,8 @@ class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslpriv
         }),
         'loglevel': t.Enum('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'),
         'sslchain': FilePath(),
-        'sslprivkey': FilePath()
+        'sslprivkey': FilePath(),
+        'reaction_threshold': t.Int
     })
 
     @classmethod
@@ -70,7 +73,7 @@ class User(namedtuple('BaseUser', 'id,ext_id,first_name,last_name,username')):
         return dict_repr
 
 
-class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,created_at,created_by')):
+class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,created_at,created_by,last_used')):
     collection = 'reactions'
 
     trafaret = t.Dict({
@@ -80,8 +83,9 @@ class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,c
         'image_id': t.String(allow_blank=True),
         'text': t.String(allow_blank=True),
         'created_at': t.Int,
-        'created_by': User.trafaret
-    }).make_optional('image_id', 'image_url', 'text')
+        'created_by': User.trafaret,
+        'last_used': t.Int,
+    }).make_optional('image_id', 'image_url', 'text', 'last_used')
 
     @classmethod
     def from_dict(cls, **kwargs):
@@ -108,4 +112,15 @@ class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,c
     @inject.params(db=AsyncIOMotorDatabase)
     def find_by_pattern(patterns, db=None):
         return db[Reaction.collection].find({'patterns': {'$in': patterns}})
+
+    @inject.params(db=AsyncIOMotorDatabase)
+    def update_usage(self, db=None):
+        epoch_now = int(time.time())
+        return db[Reaction.collection].update({'_id': self.id}, {'$set': {'last_used': epoch_now}})
+
+    @property
+    @inject.params(config=Config)
+    def on_hold(self, config=None):
+        epoch_now = int(time.time())
+        return self.last_used >= (epoch_now - config.reaction_threshold * 60)
 

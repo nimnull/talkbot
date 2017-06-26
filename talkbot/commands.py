@@ -61,3 +61,20 @@ def start(reactor, cmd, message):
         'chat_id': message['from']['id'],
         'text': "Чо-чо попячса"
     }
+
+
+def help(reactor, cmd, message):
+    reactor.response = {
+        'chat_id': message['from']['id'],
+        'parse_mode': 'Markdown',
+        'text': """
+*Commands are:*
+
+`/add_reaction` — add some reaction from bot (text or image) for phrases
+Format: /add_reaction phrase1,[phrase2],...[phraseN];URL
+
+`/start` — dummy command
+
+`/help` — This help text
+"""
+    }
