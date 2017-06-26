@@ -55,7 +55,7 @@ class TelegramBot:
             result = await self._raise_for_response(resp)
             log.info("sent: %s", result)
         except aiohttp.ClientResponseError as ex:
-            log.error("Message send failed %s", await resp.text(), exc_info=True)
+            log.error("Message send failed %s", ex, exc_info=True)
 
     async def send_photo(self, payload):
         payload['disable_notification'] = True
