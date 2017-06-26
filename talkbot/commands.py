@@ -1,5 +1,5 @@
 import re
-from collections import Iterable
+import urllib.parse
 from itertools import chain
 
 from .entities import Reaction
@@ -67,9 +67,10 @@ def help(reactor, cmd, message):
     reactor.response = {
         'chat_id': message['from']['id'],
         'parse_mode': "markdown",
-        'text': "*Commands are:*\n"
-                "`/add_reaction` — add some reaction from bot (text or image) for phrases\n"
-                "Format: /add_reaction phrase1,[phrase2],...[phraseN];URL\n\n"
-                "`/start` — dummy command\n\n"
-                "`/help` — This help text"
+        'text': urllib.parse.quote(
+            "*Commands are:*\n"
+            "`/add_reaction` - add some reaction from bot (text or image) for phrases\n"
+            "Format: /add_reaction phrase1,[phrase2],...[phraseN];URL\n\n"
+            "`/start` - dummy command\n\n"
+            "`/help` - This help text")
     }
