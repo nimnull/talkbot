@@ -1,9 +1,11 @@
 import uuid
+from unittest import mock
 
 import docker
 import pytest
-from aiohttp.test_utils import unused_port
+from aiohttp.test_utils import unused_port, make_mocked_coro
 
+import talkbot
 from talkbot.main import create_app
 
 
@@ -35,7 +37,7 @@ def mongo(docker_client, session_id):
     container.remove(force=True)
 
 
-@pytest.fixture
+@pytest.yield_fixture
 def app_client(loop, test_client, mongo):
     config = {
         'mongo': {
@@ -47,4 +49,8 @@ def app_client(loop, test_client, mongo):
     }
 
     app = create_app(loop, config)
-    return loop.run_until_complete(test_client(app))
+
+    with mock.patch.object(talkbot.main.TelegramBot, 'set_hook', new=make_mocked_coro()) as mocked_hook:
+        yield loop.run_until_complete(test_client(app))
+
+        mocked_hook.assert_called()
