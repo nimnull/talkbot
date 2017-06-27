@@ -1,8 +1,8 @@
 import re
+import time
 from collections import namedtuple
 
 import inject
-import time
 import trafaret as t
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from trafaret.contrib.object_id import MongoId
@@ -27,7 +27,7 @@ class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslpriv
             'uri': 'mongodb://mongodb',
             'db': 'talkbot'
         },
-        'loglevel': 'INFO',
+        'loglevel': 'DEBUG',
         'reaction_threshold': 4,
     }
 
