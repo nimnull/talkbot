@@ -1,14 +1,12 @@
 import asyncio
+import datetime
 import logging
 import ssl
-
 from urllib.parse import urljoin
 
 import aiohttp
-import datetime
 import inject
 import uvloop
-
 from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -122,7 +120,11 @@ def on_startup(app):
         binder.bind(Config, app['config'])
         binder.bind_to_constructor(AsyncIOMotorDatabase, init_database)
 
-    inject.configure(config_injections)
+    try:
+        inject.configure(config_injections)
+    except inject.InjectorException:
+        log.error("Injector already configured", exc_info=True)
+
     setup_logging(log)
 
     app.loop.create_task(bot.set_hook())
@@ -142,16 +144,9 @@ def create_ssl_context(config):
     return context
 
 
-def init(config):
-    log.debug("Loglevel set to %s", logging.getLevelName(log.getEffectiveLevel()))
-    asyncio.set_event_loop(None)
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    loop = uvloop.new_event_loop()
-    asyncio.set_event_loop(loop)
-
+def create_app(loop, config):
     app = web.Application(loop=loop, debug=True)
     app['config'] = Config.load_config(config)
-    ssl_context = create_ssl_context(app['config'])
 
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)
@@ -159,6 +154,18 @@ def init(config):
     app.router.add_route('POST', '/updates/', on_update)
     app.router.add_route('GET', '/ping', on_ping)
 
+    return app
+
+
+def init(config):
+    log.debug("Loglevel set to %s", logging.getLevelName(log.getEffectiveLevel()))
+    asyncio.set_event_loop(None)
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    loop = uvloop.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    app = create_app(loop, config)
+    ssl_context = create_ssl_context(app['config'])
     run_app(app, loop, ssl_context=ssl_context)
 
 
