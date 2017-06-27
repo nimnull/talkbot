@@ -1,0 +1,6 @@
+{
+  "token": "mysecrettoken",
+  "loglevel": "INFO",
+  "sslchain": "/tmp/sertificate_chain.pem",
+  "sslprivkey": "/tmp/sertificate_private_key.pem"
+}
