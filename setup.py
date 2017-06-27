@@ -3,8 +3,8 @@
 import os
 
 from setuptools import setup, find_packages
-from talkbot import __version__
 
+from talkbot import __version__
 
 # https://pypi.python.org/pypi?%3Aaction=list_classifiers
 CLASSIFIERS = [
@@ -27,7 +27,14 @@ extra = {
     'entry_points': {
         'console_scripts': ['talk_bot = talkbot.cli:main']
     },
-    'install_requires': open(fname, 'r').readlines()
+    'install_requires': open(fname, 'r').readlines(),
+    'extras_require': {
+        'testing': [
+            'pytest',
+            'pytest-aiohttp',
+            'docker',
+        ]
+    }
 }
 
 setup(
