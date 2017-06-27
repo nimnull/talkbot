@@ -77,3 +77,7 @@ def run_app(app, loop, shutdown_timeout=60.0, ssl_context=None, backlog=128):
         loop.run_until_complete(app.cleanup())
 
         loop.close()
+
+
+def find_ngrams(input_list, n):
+    return zip(*[input_list[i:] for i in range(n)])
