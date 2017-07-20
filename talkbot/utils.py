@@ -4,7 +4,9 @@ import re
 import signal
 
 import aiohttp
+import imagehash
 import inject
+from PIL import Image, ImageOps
 from aiohttp.log import access_logger
 
 url_regex = re.compile(
@@ -81,3 +83,73 @@ def run_app(app, loop, shutdown_timeout=60.0, ssl_context=None, backlog=128):
 
 def find_ngrams(input_list, n):
     return zip(*[input_list[i:] for i in range(n)])
+
+
+RESHAPE = (512, 512)
+
+
+HASH_SIZE = 16
+ALG = (
+    ('crop', 0, 0, True),  # original fitted to RESHAPE
+    ('crop', 0, 0.1, True),  # vertical 10% crop fitted to RESHAPE
+    ('crop', 0.1, 0, True),  # horizontal 10% crop fitted to RESHAPE
+    ('crop', 0.1, 0.1, True),  # vertical and horizontal 10% crop fitted to RESHAPE
+
+    ('crop', 0, 0, False),  # original resized to RESHAPE
+    ('crop', 0, 0.1, False),  # vertical 10% crop resized to RESHAPE
+    ('crop', 0.1, 0, False),  # horizontal 10% crop resized to RESHAPE
+    ('crop', 0.1, 0.1, False),  # vertical and horizontal 10% crop resized to RESHAPE
+)
+
+
+def prepare_image(img, crop_width_perc=0, crop_height_perc=0, fit_image=True, grayscale=True):
+    # convert to grayscale
+    mode = 'L' if grayscale else 'RGB'
+    result = img.convert(mode)
+
+    # crop image
+    image_size = result.size
+    width_crop_size = int(image_size[0] * crop_width_perc / 2) if crop_width_perc > 0 else 0
+    height_crop_size = int(image_size[1] * crop_height_perc / 2) if crop_height_perc > 0 else 0
+    if width_crop_size or height_crop_size:
+        result = result.crop(
+            (
+                width_crop_size,
+                height_crop_size,
+                image_size[0] - width_crop_size,
+                image_size[1] - height_crop_size
+            )
+        )
+
+    # resize to 512x512 pixels
+    resize_option = Image.ANTIALIAS
+    if fit_image:
+        return ImageOps.fit(result, RESHAPE, resize_option)
+
+    return result.resize(RESHAPE, resize_option)
+
+
+def calc_scores(source_image):
+    scores = []
+    for item in ALG:
+        if item[0] == 'crop':
+            v, h, fit_image = item[1:]
+            name = '%s_%s_%s_%s' % item
+            var_img = prepare_image(
+                source_image,
+                crop_width_perc=v,
+                crop_height_perc=h,
+                fit_image=fit_image
+            )
+
+            # val = imagehash.phash(var_img, hash_size=HASH_SIZE, highfreq_factor=HASH_SIZE)
+            val = imagehash.whash(var_img, hash_size=HASH_SIZE)
+            scores.append((name, val))
+    return scores
+
+
+def get_diff_vector(score1, score2):
+    result_vec = {}
+    for key, img_hash in score1.items():
+        result_vec[key] = img_hash - score2[key]
+    return result_vec

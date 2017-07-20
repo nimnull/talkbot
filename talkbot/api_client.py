@@ -1,3 +1,4 @@
+import io
 from datetime import datetime
 from urllib.parse import urljoin
 
@@ -9,6 +10,7 @@ from .logger import log
 
 class TelegramBot:
     BASE_URI = "https://api.telegram.org/bot{0.token}/"
+    FILE_URI = "https://api.telegram.org/file/bot{0.token}/"
 
     def __init__(self, token, session):
         self.update_offset = 0
@@ -20,7 +22,7 @@ class TelegramBot:
         return urljoin(self.BASE_URI.format(self), endpoint)
 
     def _get_file_path(self, file_path):
-        return self._get_uri(file_path)
+        return urljoin(self.FILE_URI.format(self), file_path)
 
     async def _raise_for_response(self, response):
         r_data = await response.json()
@@ -99,3 +101,9 @@ class TelegramBot:
         }
         resp = await self.session.post(self._get_uri('setWebhook'), data=payload)
         await self._raise_for_response(resp)
+
+    async def download_file(self, path):
+        resp = await self.session.get(self._get_file_path(path))
+
+        content = await resp.content.read()
+        return io.BytesIO(content)

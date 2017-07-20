@@ -73,26 +73,16 @@ class User(namedtuple('BaseUser', 'id,ext_id,first_name,last_name,username')):
         return dict_repr
 
 
-class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,created_at,created_by,last_used')):
-    collection = 'reactions'
+class StorableMix:
 
-    trafaret = t.Dict({
-        'id': t.Or(t.String | MongoId(allow_blank=True)),
-        'patterns': t.List(t.String, min_length=1),
-        'image_url': t.URL(allow_blank=True),
-        'image_id': t.String(allow_blank=True),
-        'text': t.String(allow_blank=True),
-        'created_at': t.Int,
-        'created_by': User.trafaret,
-        t.Key('last_used', default=0): t.Int,
-    }).make_optional('image_id', 'image_url', 'text', 'last_used')
+    collection = None
 
     @classmethod
     def from_dict(cls, **kwargs):
         mutable = kwargs.copy()
         if '_id' in kwargs:
             mutable['id'] = mutable.pop('_id')
-        checked = Reaction.trafaret.check(mutable)
+        checked = cls.trafaret.check(mutable)
         return cls(**checked)
 
     def to_dict(self):
@@ -108,15 +98,31 @@ class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,c
         data_dict['id'] = res.inserted_id
         return cls.from_dict(**data_dict)
 
-    @staticmethod
+
+class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,created_at,created_by,last_used'),
+               StorableMix):
+    collection = 'reactions'
+
+    trafaret = t.Dict({
+        'id': t.Or(t.String | MongoId(allow_blank=True)),
+        'patterns': t.List(t.String, min_length=1),
+        'image_url': t.URL(allow_blank=True),
+        'image_id': t.String(allow_blank=True),
+        'text': t.String(allow_blank=True),
+        'created_at': t.Int,
+        'created_by': User.trafaret,
+        t.Key('last_used', default=0): t.Int,
+    }).make_optional('image_id', 'image_url', 'text', 'last_used')
+
+    @classmethod
     @inject.params(db=AsyncIOMotorDatabase)
-    def find_by_pattern(patterns, db=None):
-        return db[Reaction.collection].find({'patterns': {'$in': patterns}})
+    def find_by_pattern(cls, patterns, db=None):
+        return db[cls.collection].find({'patterns': {'$in': patterns}})
 
     @inject.params(db=AsyncIOMotorDatabase)
     def update_usage(self, db=None):
         epoch_now = int(time.time())
-        return db[Reaction.collection].update({'_id': self.id}, {'$set': {'last_used': epoch_now}})
+        return db[self.collection].update({'_id': self.id}, {'$set': {'last_used': epoch_now}})
 
     @property
     @inject.params(config=Config)
@@ -124,3 +130,18 @@ class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,c
         epoch_now = int(time.time())
         return self.last_used >= (epoch_now - config.reaction_threshold * 60)
 
+
+class ImageFinger(namedtuple('ImageFinger', 'id,patterns,image_url,image_id,text,created_at,created_by,last_used'),
+                  StorableMix):
+    collection = 'images'
+
+    trafaret = t.Dict({
+        'id': t.Or(t.String | MongoId(allow_blank=True)),
+        'vectors': t.List(t.Mapping(t.String, t.String)),
+        'message': t.Dict().allow_extra('*'),
+    })
+
+    @classmethod
+    @inject.params(db=AsyncIOMotorDatabase)
+    def find(cls, limit=0, skip=0, db=None):
+        return db[cls.collection].find().skip(skip).limit(limit)

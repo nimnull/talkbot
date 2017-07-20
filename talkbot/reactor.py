@@ -1,8 +1,10 @@
 import asyncio
 
 import inject
+from PIL import Image
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from talkbot.utils import prepare_image, calc_scores
 from . import commands
 from .entities import Reaction
 from .logger import log
@@ -105,7 +107,12 @@ class MessageReactor:   # TODO: add tests
         images_by_size = sorted(message['photo'], key=lambda img: img['file_size'], reverse=True)
         image_info = images_by_size[0]
         data = await self.bot.get_file(image_info['file_id'])
+        buffer = await self.bot.download_file(data['file_path'])
 
+        img = Image.open(buffer)
+        scores = calc_scores(img)
+
+        log.info("Scores: %s", scores)
 
 
 
