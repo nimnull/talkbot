@@ -10,3 +10,4 @@ aiohttp>=2.2,<2.3
 motor>=1.1,<1.2
 
 ImageHash>=3.4
+numpy>=1.13,<1.14
