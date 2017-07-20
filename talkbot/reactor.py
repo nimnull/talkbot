@@ -8,7 +8,7 @@ from .entities import Reaction
 from .logger import log
 
 
-class MessageReactor:
+class MessageReactor:   # TODO: add tests
 
     next_step = None
 
@@ -18,12 +18,13 @@ class MessageReactor:
         'help': commands.help
     }
 
-    def __init__(self, message):
+    def __init__(self, message, bot_instance):
         self.message = message
         self.message_text = message.get('text')
         self.response = None
         self.db = inject.instance(AsyncIOMotorDatabase)
         self.response = {}
+        self.bot = bot_instance
 
     async def process_commands(self, message):
         log.debug("Process commands")
@@ -49,13 +50,13 @@ class MessageReactor:
                     self.response = {
                         'text': "Failed to process %s" % cmd
                     }
-                    return None
+                    return
             else:
                 name = message['from'].get('username', message['from']['first_name'])
                 self.response = {
                     'text': "There is no command '/{}', @{}".format(cmd, name)
                 }
-                return None
+                return
 
         self.next_step = self.search_reactions
         return True
@@ -63,7 +64,8 @@ class MessageReactor:
     async def search_reactions(self, message):
         # short circuit
         if not self.message_text:
-            return
+            self.next_step = self.check_repetitions
+            return True
 
         found = None
         # TODO: optimize it
@@ -95,3 +97,15 @@ class MessageReactor:
             return proceed
         else:
             raise StopAsyncIteration
+
+    async def check_repetitions(self, message):
+        if 'photo' not in message:
+            return
+
+        images_by_size = sorted(message['photo'], key=lambda img: img['file_size'], reverse=True)
+        image_info = images_by_size[0]
+        data = await self.bot.get_file(image_info['file_id'])
+
+
+
+

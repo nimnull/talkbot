@@ -3,7 +3,7 @@ import os
 import trafaret as t
 
 
-class FilePath(t.String):
+class FilePath(t.String):   # TODO: add tests
 
     def __init__(self):
         super().__init__(regex=r'^(/)?([^/\0]+(/)?)+$', min_length=1)
