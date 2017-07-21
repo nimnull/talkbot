@@ -1,4 +1,6 @@
 import io
+import time
+
 from datetime import datetime
 from urllib.parse import urljoin
 
@@ -72,7 +74,7 @@ class TelegramBot:
 
     async def on_update(self, update):
         message = update.get('message') or update.get('channel_post')
-        if message:
+        if message and (time.time() - message['date']) < 180:
             log.info("Got update: %s", update)
             await self.on_message(message)
 
