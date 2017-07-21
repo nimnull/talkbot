@@ -5,7 +5,7 @@ services:
     volumes:
       - /tmp/mongo:/data
   talkbot:
-    build: .
+    image: nimnull/talkbot:latest
     command: /bin/sh -c "python setup.py install && talk_bot run -c /srv/config.json"
     volumes:
       - .:/srv
