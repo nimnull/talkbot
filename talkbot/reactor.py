@@ -64,6 +64,7 @@ class MessageReactor:   # TODO: add tests
         return True
 
     async def search_reactions(self, message):
+        log.debug("Process reactions")
         # short circuit
         if not self.message_text:
             log.debug("no messages here, moving forward")
@@ -114,7 +115,8 @@ class MessageReactor:   # TODO: add tests
         img = Image.open(buffer)
         scores = calc_scores(img)
 
-        log.info("Scores: %s", scores)
+        for name, imghash in scores:
+            log.info("%s %s", name, imghash)
 
 
 
