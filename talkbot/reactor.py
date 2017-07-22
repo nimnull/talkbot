@@ -66,6 +66,7 @@ class MessageReactor:   # TODO: add tests
     async def search_reactions(self, message):
         # short circuit
         if not self.message_text:
+            log.debug("no messages here, moving forward")
             self.next_step = self.check_repetitions
             return True
 
@@ -80,6 +81,7 @@ class MessageReactor:   # TODO: add tests
         # short circuit
         if not found or found.on_hold:
             return
+        log.debug("Got reaction: %s", found)
 
         if found.image_id or found.image_url:
             self.response['photo'] = found.image_id or found.image_url

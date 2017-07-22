@@ -12,6 +12,7 @@ RUN echo "http://nl.alpinelinux.org/alpine/edge/community/" >> /etc/apk/reposito
   && pip install --upgrade pip "numpy>=1.13,<1.14" \
   && pip install -r /tmp/requirements.txt \
   && apk del .build-deps \
+  && apk add lapack libjpeg liblcms \
   && rm -rf /tmp/requirements.txt \
   && rm -rf /root/.cache
 WORKDIR /srv/
