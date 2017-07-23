@@ -157,6 +157,7 @@ class MessageReactor:   # TODO: add tests
             }
         else:
             await ImageFinger.create({
+                'id': None,
                 'vectors': dict((name, str(img_hash)) for name, img_hash in scores),
                 'message': message,
                 'file_id': image_info['file_id'],

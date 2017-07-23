@@ -149,7 +149,7 @@ class ImageFinger(namedtuple('ImageFinger', 'id,vectors,message,file_id,chat_id'
     collection = 'images'
     trafaret = t.Dict({
         'id': t.Or(t.String | MongoId(allow_blank=True)),
-        'vectors': t.List(t.Mapping(t.String, t.String)),
+        'vectors': t.Mapping(t.String, t.String),
         'message': t.Dict().allow_extra('*'),
         'file_id': t.String,
         'chat_id': t.Int
