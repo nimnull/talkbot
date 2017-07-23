@@ -80,7 +80,7 @@ class MessageReactor:   # TODO: add tests
 
         found = None
         # TODO: optimize it
-        async for reaction in self.db[Reaction.collection].find():
+        async for reaction in Reaction.find():
             r = Reaction.from_dict(**reaction)
             for pattern in r.patterns:
                 if pattern in self.message_text.lower():
@@ -136,7 +136,7 @@ class MessageReactor:   # TODO: add tests
         class_prob = 0
         duplicate = None
 
-        for finger in await ImageFinger.find():
+        async for finger in ImageFinger.find():
             scores2 = [(name, hex_to_hash(bytes_str, HASH_SIZE))
                        for name, bytes_str in finger['vectors'].items()]
             vector = pd.DataFrame.from_dict([get_diff_vector(scores, scores2)])
