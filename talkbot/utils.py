@@ -11,6 +11,7 @@ import pandas as pd
 from PIL import Image, ImageOps
 from aiohttp.log import access_logger
 from sklearn.ensemble import GradientBoostingClassifier
+from .entities import Config
 
 url_regex = re.compile(
     r'^(?:http|ftp)s?://'  # http:// or https://
@@ -158,6 +159,7 @@ def get_diff_vector(score1, score2):
     return result_vec
 
 
+@inject.params(config=Config)
 def fit_model(config=None):
     df = pd.read_csv(config.sample_df)
     # convert values to bool

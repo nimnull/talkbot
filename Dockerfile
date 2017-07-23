@@ -10,10 +10,11 @@ RUN echo "http://nl.alpinelinux.org/alpine/edge/community/" >> /etc/apk/reposito
     jpeg-dev \
     lcms-dev \
     lapack-dev \
-  && pip install --upgrade pip "numpy>=1.13,<1.14" "SciPy>=0.9" \
+  && pip install --upgrade pip "numpy>=1.13,<1.14" \
+  && pip install "SciPy>=0.9" \
   && pip install -r /tmp/requirements.txt \
   && apk del .build-deps \
-  && apk add lapack libjpeg liblcms \
+  && apk add lapack libjpeg liblcms libstdc++ \
   && rm -rf /tmp/requirements.txt \
   && rm -rf /root/.cache
 WORKDIR /srv/

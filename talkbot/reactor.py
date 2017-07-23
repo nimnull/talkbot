@@ -15,7 +15,7 @@ from .utils import calc_scores, fit_model, HASH_SIZE, get_diff_vector
 
 class MessageReactor:   # TODO: add tests
     config = inject.attr(Config)
-    image_model = fit_model(config)
+    image_model = fit_model()
 
     next_step = None
 
