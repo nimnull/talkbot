@@ -6,8 +6,11 @@ import signal
 import aiohttp
 import imagehash
 import inject
+import pandas as pd
+
 from PIL import Image, ImageOps
 from aiohttp.log import access_logger
+from catboost import CatBoostClassifier
 
 url_regex = re.compile(
     r'^(?:http|ftp)s?://'  # http:// or https://
@@ -153,3 +156,15 @@ def get_diff_vector(score1, score2):
     for key, img_hash in score1.items():
         result_vec[key] = img_hash - score2[key]
     return result_vec
+
+
+def fit_model(config=None):
+    df = pd.read_csv(config.sample_df)
+    # convert values to bool
+    df['d'] = df['d'].astype('bool')
+    l_model = CatBoostClassifier()
+    l_model = l_model.fit(
+        df[df.columns.difference(['d'])],
+        df['d']
+    )
+    return l_model

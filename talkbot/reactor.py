@@ -1,16 +1,21 @@
 import asyncio
 
 import inject
+import pandas as pd
+
 from PIL import Image
+from imagehash import hex_to_hash
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from talkbot.utils import prepare_image, calc_scores
 from . import commands
-from .entities import Reaction
+from .entities import Reaction, ImageFinger, Config
 from .logger import log
+from .utils import calc_scores, fit_model, HASH_SIZE, get_diff_vector
 
 
 class MessageReactor:   # TODO: add tests
+    config = inject.attr(Config)
+    image_model = fit_model(config)
 
     next_step = None
 
@@ -22,6 +27,7 @@ class MessageReactor:   # TODO: add tests
 
     def __init__(self, message, bot_instance):
         self.message = message
+        self.chat_id = message.get('chat', {}).get('id')
         self.message_text = message.get('text')
         self.response = None
         self.db = inject.instance(AsyncIOMotorDatabase)
@@ -109,14 +115,44 @@ class MessageReactor:   # TODO: add tests
 
         images_by_size = sorted(message['photo'], key=lambda img: img['file_size'], reverse=True)
         image_info = images_by_size[0]
+
+        finger = ImageFinger.find_one({'chat_id': self.chat_id, 'file_id': image_info['file_id']})
+        if finger:
+            self.response = {
+                'text': "100% было",
+                'reply_to_message_id': self.message['id']
+            }
+            return
+
         data = await self.bot.get_file(image_info['file_id'])
         buffer = await self.bot.download_file(data['file_path'])
 
         img = Image.open(buffer)
         scores = calc_scores(img)
+        bool_repr = False
+        class_prob = 0
+        duplicate = None
 
-        for name, imghash in scores:
-            log.info("%s %s", name, imghash)
+        for finger in await ImageFinger.find():
+            scores2 = [(name, hex_to_hash(bytes_str, HASH_SIZE))
+                       for name, bytes_str in finger['vectors'].items()]
+            vector = pd.DataFrame.from_dict([get_diff_vector(scores, scores2)])
+            duplicate = finger
+            p_class = self.image_model.predict(vector)[0]
+            class_prob = self.image_model.predict_proba(vector)[0][int(p_class)]
+            bool_repr = bool(int(p_class))
 
+        if bool_repr:
+            self.response = {
+                'reply_to_message_id': self.message['id'],
+                'Text': "Баян (%d%%)" % int(class_prob * 100)
+            }
+        else:
+            await ImageFinger.create({
+                'vectors': dict((name, str(img_hash)) for name, img_hash in scores),
+                'message': message,
+                'file_id': image_info['file_id'],
+                'chat_id': self.chat_id
+            })
 
 
