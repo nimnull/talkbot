@@ -10,7 +10,7 @@ import pandas as pd
 
 from PIL import Image, ImageOps
 from aiohttp.log import access_logger
-from catboost import CatBoostClassifier
+from sklearn.ensemble import GradientBoostingClassifier
 
 url_regex = re.compile(
     r'^(?:http|ftp)s?://'  # http:// or https://
@@ -162,7 +162,7 @@ def fit_model(config=None):
     df = pd.read_csv(config.sample_df)
     # convert values to bool
     df['d'] = df['d'].astype('bool')
-    l_model = CatBoostClassifier()
+    l_model = GradientBoostingClassifier(max_depth=1, learning_rate=0.2, n_estimators=150)
     l_model = l_model.fit(
         df[df.columns.difference(['d'])],
         df['d']

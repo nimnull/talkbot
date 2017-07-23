@@ -29,7 +29,7 @@ extra = {
     },
     'install_requires': open(fname, 'r').readlines(),
     'extras_require': {
-        'testing': [
+        'test': [
             'pytest',
             'pytest-aiohttp',
             'docker',

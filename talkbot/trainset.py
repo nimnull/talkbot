@@ -21,7 +21,7 @@ import pandas as pd
 import time
 
 from PIL import Image
-from catboost import CatBoostClassifier
+from sklearn.ensemble import GradientBoostingClassifier
 
 from talkbot.utils import calc_scores, get_diff_vector, ALG, prepare_image
 
@@ -100,7 +100,7 @@ def train(input):
     # convert values to bool
     df['d'] = df['d'].astype('bool')
 
-    l_model = CatBoostClassifier()
+    l_model = GradientBoostingClassifier(max_depth=1, learning_rate=0.2, n_estimators=150)
     l_model = l_model.fit(
         df[df.columns.difference(['d'])],
         df['d']
@@ -118,8 +118,9 @@ def train(input):
 
     p_class = l_model.predict(df2)[0]
     class_prob = l_model.predict_proba(df2)[0][int(p_class)]
-    print(bool(int(p_class)), class_prob)
+    print(p_class, class_prob)
 
 
 if __name__ == '__main__':
     _main()
+
