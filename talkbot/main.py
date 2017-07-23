@@ -8,12 +8,13 @@ import uvloop
 
 from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from sklearn.ensemble import GradientBoostingClassifier
 
 from .api_client import TelegramBot
 from .entities import Config
 from .logger import log, setup_logging
 from .storage import init_database
-from .utils import run_app
+from .utils import run_app, fit_model
 
 
 @inject.params(bot=TelegramBot)
@@ -32,12 +33,15 @@ def on_startup(app):
     connector = aiohttp.TCPConnector(limit=5, use_dns_cache=True, loop=app.loop)
     session = aiohttp.ClientSession(connector=connector, raise_for_status=True)
     bot = TelegramBot(app['config'].token, session)
+    image_model = fit_model(app['config'].sample_df)
 
     def config_injections(binder):
         # injection bindings
-        binder.bind(TelegramBot, bot)
         binder.bind(Config, app['config'])
+        binder.bind(TelegramBot, bot)
+        binder.bind(GradientBoostingClassifier, image_model)
         binder.bind_to_constructor(AsyncIOMotorDatabase, init_database)
+
 
     try:
         inject.configure(config_injections)

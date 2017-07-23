@@ -6,16 +6,17 @@ import pandas as pd
 from PIL import Image
 from imagehash import hex_to_hash
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from sklearn.ensemble import GradientBoostingClassifier
 
 from . import commands
 from .entities import Reaction, ImageFinger, Config
 from .logger import log
-from .utils import calc_scores, fit_model, HASH_SIZE, get_diff_vector
+from .utils import calc_scores, HASH_SIZE, get_diff_vector
 
 
 class MessageReactor:   # TODO: add tests
     config = inject.attr(Config)
-    image_model = fit_model()
+    image_model = inject.attr(GradientBoostingClassifier)
 
     next_step = None
 
