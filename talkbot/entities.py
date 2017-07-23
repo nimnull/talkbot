@@ -108,8 +108,8 @@ class StorableMix:
 
     @classmethod
     @inject.params(db=AsyncIOMotorDatabase)
-    def find_one(cls, query=None, limit=0, skip=0, db=None):
-        return db[cls.collection].find_one(query).skip(skip).limit(limit)
+    def find_one(cls, query=None, db=None):
+        return db[cls.collection].find_one(query)
 
 
 class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,created_at,created_by,last_used'),
