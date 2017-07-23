@@ -138,7 +138,7 @@ class MessageReactor:   # TODO: add tests
 
         async for finger in ImageFinger.find():
             scores2 = [(name, hex_to_hash(bytes_str, HASH_SIZE))
-                       for name, bytes_str in finger['vectors'].items()]
+                       for name, bytes_str in finger['vectors']]
             vector = pd.DataFrame.from_dict([get_diff_vector(scores, scores2)])
             duplicate = finger
             predicted = self.image_model.predict(vector)
@@ -158,7 +158,7 @@ class MessageReactor:   # TODO: add tests
         else:
             await ImageFinger.create({
                 'id': None,
-                'vectors': dict((name, str(img_hash)) for name, img_hash in scores),
+                'vectors': ((name, str(img_hash)) for name, img_hash in scores),
                 'message': message,
                 'file_id': image_info['file_id'],
                 'chat_id': self.chat_id
