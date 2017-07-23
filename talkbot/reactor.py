@@ -117,7 +117,7 @@ class MessageReactor:   # TODO: add tests
         images_by_size = sorted(message['photo'], key=lambda img: img['file_size'], reverse=True)
         image_info = images_by_size[0]
 
-        finger = ImageFinger.find_one({'chat_id': self.chat_id, 'file_id': image_info['file_id']})
+        finger = await ImageFinger.find_one({'chat_id': self.chat_id, 'file_id': image_info['file_id']})
         log.debug("Fingerprint: %s", finger)
 
         if finger:
