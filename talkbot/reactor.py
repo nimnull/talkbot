@@ -139,13 +139,18 @@ class MessageReactor:   # TODO: add tests
                        for name, bytes_str in finger['vectors'].items()]
             vector = pd.DataFrame.from_dict([get_diff_vector(scores, scores2)])
             duplicate = finger
-            p_class = self.image_model.predict(vector)[0]
-            class_prob = self.image_model.predict_proba(vector)[0][int(p_class)]
+            predicted = self.image_model.predict(vector)
+            class_probs = self.image_model.predict_proba(vector)
+            log.debug("Predict res: %s", predicted)
+            log.debug("Probs: %s", class_probs)
+            p_class = predicted[0]
+
+            class_prob = class_probs[0][int(p_class)]
             bool_repr = bool(int(p_class))
 
         if bool_repr:
             self.response = {
-                'reply_to_message_id': self.message['id'],
+                'reply_to_message_id': self.message['message_id'],
                 'Text': "Баян (%d%%)" % int(class_prob * 100)
             }
         else:
