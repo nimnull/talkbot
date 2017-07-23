@@ -118,10 +118,12 @@ class MessageReactor:   # TODO: add tests
         image_info = images_by_size[0]
 
         finger = ImageFinger.find_one({'chat_id': self.chat_id, 'file_id': image_info['file_id']})
+        log.debug("Fingerprint: %s", finger)
+
         if finger:
             self.response = {
                 'text': "100% было",
-                'reply_to_message_id': self.message['id']
+                'reply_to_message_id': self.message['message_id']
             }
             return
 
