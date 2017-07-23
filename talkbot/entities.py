@@ -4,13 +4,14 @@ from collections import namedtuple
 
 import inject
 import trafaret as t
+
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from trafaret.contrib.object_id import MongoId
 
 from .trafarets import FilePath
 
 
-class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslprivkey,reaction_threshold')):
+class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslprivkey,reaction_threshold,sample_df')):
     __slots__ = ()
     mongo_uri_re = re.compile(
         r'^(?:mongodb)://'  # mongodb://
@@ -29,6 +30,7 @@ class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslpriv
         },
         'loglevel': 'DEBUG',
         'reaction_threshold': 4,
+        'sample_df': "sample.csv",
     }
 
     trafaret = t.Dict({
@@ -40,6 +42,7 @@ class Config(namedtuple('BaseConfig', 'token, mongo, loglevel, sslchain, sslpriv
         'loglevel': t.Enum('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'),
         'sslchain': FilePath(),
         'sslprivkey': FilePath(),
+        'sample_df': FilePath(),
         'reaction_threshold': t.Int
     })
 
@@ -98,6 +101,16 @@ class StorableMix:
         data_dict['id'] = res.inserted_id
         return cls.from_dict(**data_dict)
 
+    @classmethod
+    @inject.params(db=AsyncIOMotorDatabase)
+    def find(cls, query=None, limit=0, skip=0, db=None):
+        return db[cls.collection].find(query).skip(skip).limit(limit)
+
+    @classmethod
+    @inject.params(db=AsyncIOMotorDatabase)
+    def find_one(cls, query=None, limit=0, skip=0, db=None):
+        return db[cls.collection].find(query).skip(skip).limit(limit)
+
 
 class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,created_at,created_by,last_used'),
                StorableMix):
@@ -131,17 +144,13 @@ class Reaction(namedtuple('BaseReaction', 'id,patterns,image_url,image_id,text,c
         return self.last_used >= (epoch_now - config.reaction_threshold * 60)
 
 
-class ImageFinger(namedtuple('ImageFinger', 'id,patterns,image_url,image_id,text,created_at,created_by,last_used'),
+class ImageFinger(namedtuple('ImageFinger', 'id,vectors,message,file_id,chat_id'),
                   StorableMix):
     collection = 'images'
-
     trafaret = t.Dict({
         'id': t.Or(t.String | MongoId(allow_blank=True)),
         'vectors': t.List(t.Mapping(t.String, t.String)),
         'message': t.Dict().allow_extra('*'),
+        'file_id': t.String,
+        'chat_id': t.Int
     })
-
-    @classmethod
-    @inject.params(db=AsyncIOMotorDatabase)
-    def find(cls, limit=0, skip=0, db=None):
-        return db[cls.collection].find().skip(skip).limit(limit)
