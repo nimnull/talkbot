@@ -142,7 +142,7 @@ class MessageReactor:   # TODO: add tests
             # duplicate = finger
             predicted = self.image_model.predict(vector)
             class_probs = self.image_model.predict_proba(vector)
-            log.debug("Predict res: %s", predicted)
+            log.debug("Predict res: %s", predicted[0])
             log.debug("Probs: %s", class_probs)
 
             p_class = predicted[0]
@@ -150,7 +150,7 @@ class MessageReactor:   # TODO: add tests
             if p_class:
                 self.response = {
                     'reply_to_message_id': self.message['message_id'],
-                    'Text': "Баян (%d%%)" % int(class_prob * 100)
+                    'text': "Баян (%d%%)" % int(class_prob * 100)
                 }
                 return
 
