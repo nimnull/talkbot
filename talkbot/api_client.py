@@ -107,6 +107,5 @@ class TelegramBot:
 
     async def download_file(self, path):
         resp = await self.session.get(self._get_file_path(path))
-        assert resp.status == HTTPStatus.OK, resp.status
-        content = await resp.content.read()
-        return io.BytesIO(content)
+        resp.raise_for_status()
+        return await resp.content.read()

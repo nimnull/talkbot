@@ -133,7 +133,7 @@ class MessageReactor:   # TODO: add tests
         tmpfile = tempfile.NamedTemporaryFile()
         tmpfile.close()
         with open('/tmp/tmp8f09fdsl', 'wb') as fp:
-            fp.write(buffer.read())
+            fp.write(buffer)
         log.debug("Tempfile: %s", tmpfile.name)
         img = Image.open(tmpfile.name)
         scores = calc_scores(img)
