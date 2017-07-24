@@ -132,37 +132,34 @@ class MessageReactor:   # TODO: add tests
 
         img = Image.open(buffer)
         scores = calc_scores(img)
-        bool_repr = False
-        class_prob = 0
-        duplicate = None
+
 
         async for finger in ImageFinger.find():
             scores2 = ((name, hex_to_hash(bytes_str, HASH_SIZE))
                        for name, bytes_str in finger['vectors'])
             dict_scores = map(dict, [scores, scores2])
             vector = pd.DataFrame.from_dict([get_diff_vector(*dict_scores)])
-            duplicate = finger
+            # duplicate = finger
             predicted = self.image_model.predict(vector)
             class_probs = self.image_model.predict_proba(vector)
             log.debug("Predict res: %s", predicted)
             log.debug("Probs: %s", class_probs)
+
             p_class = predicted[0]
-
             class_prob = class_probs[0][int(p_class)]
-            bool_repr = bool(int(p_class))
+            if p_class:
+                self.response = {
+                    'reply_to_message_id': self.message['message_id'],
+                    'Text': "Баян (%d%%)" % int(class_prob * 100)
+                }
+                return
 
-        if bool_repr:
-            self.response = {
-                'reply_to_message_id': self.message['message_id'],
-                'Text': "Баян (%d%%)" % int(class_prob * 100)
-            }
-        else:
-            await ImageFinger.create({
-                'id': None,
-                'vectors': list([name, str(img_hash)] for name, img_hash in scores),
-                'message': message,
-                'file_id': image_info['file_id'],
-                'chat_id': self.chat_id
-            })
+        await ImageFinger.create({
+            'id': None,
+            'vectors': list([name, str(img_hash)] for name, img_hash in scores),
+            'message': message,
+            'file_id': image_info['file_id'],
+            'chat_id': self.chat_id
+        })
 
 
