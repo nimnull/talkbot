@@ -21,9 +21,10 @@ import pandas as pd
 import time
 
 from PIL import Image
+from imagehash import hex_to_hash
 from sklearn.ensemble import GradientBoostingClassifier
 
-from talkbot.utils import calc_scores, get_diff_vector, ALG, prepare_image
+from talkbot.utils import calc_scores, get_diff_vector, ALG, prepare_image, HASH_SIZE
 
 BASEDIR = './data'
 TRAINDIR = os.path.join(BASEDIR, 'train')
@@ -105,12 +106,22 @@ def train(input):
         df[df.columns.difference(['d'])],
         df['d']
     )
+    s = [["crop_0_0_True", "bf0fff33feff01102df52f0035010700ff243fcf9fc70080dfffffff00000000"],
+              ["crop_0_0.1_True", "bffffffffbfb0000070031003f030300ffe63f009f87fdcf067072ff57070000"],
+              ["crop_0.1_0_True", "bf0fff33feff01102df52f0035010700ff243fcf9fc70080dfffffff00000000"],
+              ["crop_0.1_0.1_True", "bffffffffbfb0000070031003f030300ffe63f009f87fdcf067072ff57070000"],
+              ["crop_0_0_False", "ff03ff01ffff01007d1e7f007e011e007e007f13fff90700ff1fff7f07000000"],
+              ["crop_0_0.1_False", "ff1fff1ffcff01003f0056007e011e00fc0c7f00bffbee5b0704d17fbf010700"],
+              ["crop_0.1_0_False", "ff03ff03ffbf00001f3e5f007f011f007f00ff16bff30700df3fff7f03000000"],
+              ["crop_0.1_0.1_False", "7f3fff3ffefd00001f0043007f011f007e087f00bfd3efb9070cd5ff9f010700"]]
+    scores2 = dict((name, hex_to_hash(bytes_str, HASH_SIZE))
+                for name, bytes_str in s)
 
-    images = ['6.jpg', '7.jpg']
+    images = ['7.jpg']
     img_objs = map(lambda i: Image.open(os.path.join(BASEDIR, i)), images)
     scores = map(dict, map(calc_scores, img_objs))
 
-    vector = get_diff_vector(*scores)
+    vector = get_diff_vector(list(scores)[0], scores2)
 
     print(vector)
     df2 = pd.DataFrame.from_dict([vector])

@@ -1,11 +1,11 @@
 import asyncio
-import tempfile
 
 import inject
+import numpy
 import pandas as pd
 
 from PIL import Image
-from imagehash import hex_to_hash
+from imagehash import hex_to_hash, ImageHash
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from sklearn.ensemble import GradientBoostingClassifier
 
@@ -130,19 +130,16 @@ class MessageReactor:   # TODO: add tests
 
         data = await self.bot.get_file(image_info['file_id'])
         buffer = await self.bot.download_file(data['file_path'])
-        tmpfile = tempfile.NamedTemporaryFile()
-        tmpfile.close()
-        with open(tmpfile.name, 'wb') as fp:
-            fp.write(buffer)
-        log.debug("Tempfile: %s", tmpfile.name)
-        img = Image.open(tmpfile.name)
+
+        img = Image.open(buffer)
         scores = calc_scores(img)
         new_img = dict(scores)
 
         async for finger in ImageFinger.find({'chat_id': self.chat_id}):
-            stored_img = dict((name, hex_to_hash(bytes_str, HASH_SIZE))
-                       for name, bytes_str in finger['vectors'])
+            stored_img = dict((name, ImageHash(numpy.asarray(bytes_list, dtype=numpy.bool_)))
+                       for name, bytes_list in finger['vectors'])
             diff = get_diff_vector(new_img, stored_img)
+
             vector = pd.DataFrame.from_dict([diff])
             # duplicate = finger
             predicted = self.image_model.predict(vector)
@@ -161,7 +158,7 @@ class MessageReactor:   # TODO: add tests
 
         fp = await ImageFinger.create({
             'id': None,
-            'vectors': list([name, str(img_hash)] for name, img_hash in scores),
+            'vectors': list([name, img_hash.hash.tolist()] for name, img_hash in scores),
             'message': message,
             'file_id': image_info['file_id'],
             'chat_id': self.chat_id
