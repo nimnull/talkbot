@@ -154,12 +154,12 @@ class MessageReactor:   # TODO: add tests
                 }
                 return
 
-        await ImageFinger.create({
+        fp = await ImageFinger.create({
             'id': None,
             'vectors': list([name, str(img_hash)] for name, img_hash in scores),
             'message': message,
             'file_id': image_info['file_id'],
             'chat_id': self.chat_id
         })
-
+        log.info("New image saved for future: %s", fp.id)
 
