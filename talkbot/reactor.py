@@ -131,9 +131,11 @@ class MessageReactor:   # TODO: add tests
         data = await self.bot.get_file(image_info['file_id'])
         buffer = await self.bot.download_file(data['file_path'])
         tmpfile = tempfile.NamedTemporaryFile()
-        tmpfile.write(buffer.read())
+        tmpfile.close()
+        with open('/tmp/tmp8f09fdsl', 'wb') as fp:
+            fp.write(buffer.read())
         log.debug("Tempfile: %s", tmpfile.name)
-        img = Image.open(tmpfile)
+        img = Image.open(tmpfile.name)
         scores = calc_scores(img)
         new_img = dict(scores)
 
