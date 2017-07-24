@@ -137,9 +137,10 @@ class MessageReactor:   # TODO: add tests
         duplicate = None
 
         async for finger in ImageFinger.find():
-            scores2 = dict((name, hex_to_hash(bytes_str, HASH_SIZE))
-                           for name, bytes_str in finger['vectors'])
-            vector = pd.DataFrame.from_dict([get_diff_vector(scores, scores2)])
+            scores2 = ((name, hex_to_hash(bytes_str, HASH_SIZE))
+                       for name, bytes_str in finger['vectors'])
+            dict_scores = map(dict, [scores, scores2])
+            vector = pd.DataFrame.from_dict([get_diff_vector(*dict_scores)])
             duplicate = finger
             predicted = self.image_model.predict(vector)
             class_probs = self.image_model.predict_proba(vector)
