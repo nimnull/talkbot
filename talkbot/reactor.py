@@ -1,4 +1,5 @@
 import asyncio
+import tempfile
 
 import inject
 import pandas as pd
@@ -129,16 +130,19 @@ class MessageReactor:   # TODO: add tests
 
         data = await self.bot.get_file(image_info['file_id'])
         buffer = await self.bot.download_file(data['file_path'])
-
-        img = Image.open(buffer)
+        tmpfile = tempfile.mkstemp()
+        with open(tmpfile, 'wb') as fp:
+            fp.write(buffer.read())
+        log.debug("Tempfile: %s", tmpfile)
+        img = Image.open(tmpfile)
         scores = calc_scores(img)
-
+        new_img = dict(scores)
 
         async for finger in ImageFinger.find({'chat_id': self.chat_id}):
-            scores2 = ((name, hex_to_hash(bytes_str, HASH_SIZE))
+            stored_img = dict((name, hex_to_hash(bytes_str, HASH_SIZE))
                        for name, bytes_str in finger['vectors'])
-            dict_scores = map(dict, [scores, scores2])
-            vector = pd.DataFrame.from_dict([get_diff_vector(*dict_scores)])
+            diff = get_diff_vector(new_img, stored_img)
+            vector = pd.DataFrame.from_dict([diff])
             # duplicate = finger
             predicted = self.image_model.predict(vector)
             class_probs = self.image_model.predict_proba(vector)

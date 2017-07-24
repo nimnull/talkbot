@@ -100,13 +100,13 @@ def train(input):
     # convert values to bool
     df['d'] = df['d'].astype('bool')
 
-    l_model = GradientBoostingClassifier(max_depth=1, learning_rate=0.2, n_estimators=150)
+    l_model = GradientBoostingClassifier()
     l_model = l_model.fit(
         df[df.columns.difference(['d'])],
         df['d']
     )
 
-    images = ['3.png', '5.png']
+    images = ['6.jpg', '7.jpg']
     img_objs = map(lambda i: Image.open(os.path.join(BASEDIR, i)), images)
     scores = map(dict, map(calc_scores, img_objs))
 
