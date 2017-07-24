@@ -134,7 +134,7 @@ class MessageReactor:   # TODO: add tests
         scores = calc_scores(img)
 
 
-        async for finger in ImageFinger.find():
+        async for finger in ImageFinger.find({'chat_id': self.chat_id}):
             scores2 = ((name, hex_to_hash(bytes_str, HASH_SIZE))
                        for name, bytes_str in finger['vectors'])
             dict_scores = map(dict, [scores, scores2])
