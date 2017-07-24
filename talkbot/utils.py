@@ -163,7 +163,7 @@ def fit_model(training_sample):
     df = pd.read_csv(training_sample)
     # convert values to bool
     df['d'] = df['d'].astype('bool')
-    l_model = GradientBoostingClassifier(max_depth=1, learning_rate=0.2, n_estimators=150)
+    l_model = GradientBoostingClassifier()
     l_model = l_model.fit(
         df[df.columns.difference(['d'])],
         df['d']
