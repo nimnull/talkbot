@@ -150,12 +150,12 @@ class MessageReactor:   # TODO: add tests
             p_class = predicted[0]
             class_prob = class_probs[0][int(p_class)]
             if p_class:
-                self.bot.send_message({
+                await self.bot.send_message({
                     'reply_to_message_id': self.message['message_id'],
                     'text': "Баян (%d%%)" % int(class_prob * 100),
                     'chat_id': self.chat_id
                 })
-                self.bot.send_message({
+                await self.bot.send_message({
                     'reply_to_message_id': finger['message']['message_id'],
                     'text': "Пруф",
                     'chat_id': self.chat_id
