@@ -132,7 +132,7 @@ class MessageReactor:   # TODO: add tests
         buffer = await self.bot.download_file(data['file_path'])
         tmpfile = tempfile.NamedTemporaryFile()
         tmpfile.close()
-        with open('/tmp/tmp8f09fdsl', 'wb') as fp:
+        with open(tmpfile.name, 'wb') as fp:
             fp.write(buffer)
         log.debug("Tempfile: %s", tmpfile.name)
         img = Image.open(tmpfile.name)
